@@ -5,8 +5,12 @@ import 'presentation/controllers/reminder_controller.dart';
 import 'presentation/pages/home_page.dart';
 import 'presentation/theme/palette.dart';
 
+
+
+
 class DailyApp extends StatelessWidget {
   const DailyApp({super.key, required this.planner, required this.reminder});
+
   final PlannerController planner;
   final ReminderController reminder;
 
@@ -21,14 +25,14 @@ class DailyApp extends StatelessWidget {
       useMaterial3: true,
       fontFamily: 'Google Sans',
       scaffoldBackgroundColor: Colors.white,
-      colorScheme: ColorScheme.fromSeed(seedColor: peach).copyWith(
+      colorScheme: ColorScheme.fromSeed(seedColor: cream).copyWith(
         primary: ink,
-        onPrimary: Colors.white,
-        primaryContainer: peach,
+        onPrimary: cream,
+        primaryContainer: cream,
         onPrimaryContainer: ink,
         surface: Colors.white,
         onSurface: ink,
-        secondaryContainer: peach,
+        secondaryContainer: cream,
         onSecondaryContainer: ink,
       ),
       appBarTheme: const AppBarTheme(
@@ -39,12 +43,12 @@ class DailyApp extends StatelessWidget {
       ),
       navigationBarTheme: const NavigationBarThemeData(
         backgroundColor: Colors.white,
-        indicatorColor: peach,
+        indicatorColor: cream,
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: peach,
-          foregroundColor: ink,
+          backgroundColor: ink,
+          foregroundColor: cream,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -52,15 +56,15 @@ class DailyApp extends StatelessWidget {
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: peach,
-        foregroundColor: ink,
+        backgroundColor: ink,
+        foregroundColor: cream,
         elevation: 0,
       ),
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       ),
       chipTheme: ChipThemeData(
-        selectedColor: peach,
+        selectedColor: cream,
         side: const BorderSide(color: Color(0xFFE7E1D9)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),

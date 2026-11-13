@@ -5,12 +5,12 @@
   --font-sans: 'Google Sans', system-ui, sans-serif;
   --font-serif: 'Google Sans', system-ui, sans-serif;
   --color-paper: #ffffff;
-  --color-card: #fff7ea;
+  --color-card: #ffffff;
   --color-ink: #2b2116;
-  --color-moss: #ffcf94;
-  --color-sage: #ffe9cb;
-  --color-clay: #ffcf94;
-  --color-sand: #fff1dc;
+  --color-moss: #fff8e7;
+  --color-sage: #ffedc2;
+  --color-clay: #fff8e7;
+  --color-sand: #fff3d6;
 }
 @layer base {
   body { font-family: var(--font-sans); background: #f3ede4; color: var(--color-ink); }

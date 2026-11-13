@@ -1,4 +1,5 @@
 import 'package:daily_todo/domain/entities/task.dart';
+import 'package:daily_todo/domain/entities/task_snapshot.dart';
 import 'package:daily_todo/domain/entities/reminder_settings.dart';
 import 'package:daily_todo/domain/repositories/task_repository.dart';
 import 'package:daily_todo/domain/repositories/reminder_repository.dart';
@@ -6,8 +7,30 @@ import 'package:daily_todo/domain/repositories/reminder_repository.dart';
 class MemoryTaskRepository implements TaskRepository {
   final List<Task> tasks = [];
   bool fail = false;
+  List<Task>? backup;
   @override
-  Future<List<Task>> load() async => List.of(tasks);
+  Future<TaskSnapshot> load() async =>
+      TaskSnapshot(tasks, canRestore: backup != null);
+  @override
+  Future<void> replaceAll(List<Task> next, {bool createBackup = false}) async {
+    if (fail) throw StateError('write failed');
+    if (createBackup) backup = List.of(tasks);
+    tasks
+      ..clear()
+      ..addAll(next);
+  }
+
+  @override
+  Future<TaskSnapshot> restoreBackup() async {
+    if (fail || backup == null) throw StateError('restore failed');
+    final previous = List<Task>.of(backup!);
+    backup = List.of(tasks);
+    tasks
+      ..clear()
+      ..addAll(previous);
+    return TaskSnapshot(tasks, canRestore: true);
+  }
+
   @override
   Future<void> save(Task task) async {
     if (fail) throw StateError('write failed');

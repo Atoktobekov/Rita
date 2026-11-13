@@ -9,11 +9,15 @@ class ProgressRing extends StatelessWidget {
     this.size = 104,
     this.stroke = 11,
     this.fontSize = 24,
+    this.child,
   });
+
   final int percent;
   final double size;
   final double stroke;
   final double fontSize;
+  final Widget? child;
+
   @override
   Widget build(BuildContext context) => Semantics(
     label: 'Выполнено $percent процентов',
@@ -22,10 +26,12 @@ class ProgressRing extends StatelessWidget {
       child: CustomPaint(
         painter: _RingPainter(percent / 100, stroke),
         child: Center(
-          child: Text(
-            '$percent%',
-            style: TextStyle(fontSize: fontSize, height: 1.33),
-          ),
+          child:
+              child ??
+              Text(
+                '$percent%',
+                style: TextStyle(fontSize: fontSize, height: 1.33),
+              ),
         ),
       ),
     ),
@@ -34,8 +40,10 @@ class ProgressRing extends StatelessWidget {
 
 class _RingPainter extends CustomPainter {
   const _RingPainter(this.value, this.stroke);
+
   final double value;
   final double stroke;
+
   @override
   void paint(Canvas canvas, Size size) {
     final rect = (Offset.zero & size).deflate(stroke / 2);

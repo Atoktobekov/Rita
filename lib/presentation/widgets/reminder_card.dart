@@ -6,6 +6,7 @@ import 'design_icon.dart';
 
 class ReminderCard extends StatelessWidget {
   const ReminderCard({super.key, required this.controller});
+
   final ReminderController controller;
 
   Future<void> selectTime(BuildContext context, String value) async {
@@ -44,6 +45,7 @@ class ReminderCard extends StatelessWidget {
           const PopupMenuItem(value: 'custom', child: Text('Другое время…')),
         ],
         child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: card,
@@ -80,7 +82,9 @@ class ReminderCard extends StatelessWidget {
           '${settings.hour.toString().padLeft(2, '0')}:${settings.minute.toString().padLeft(2, '0')}';
       return LayoutBuilder(
         builder: (context, constraints) {
-          final compact = constraints.maxWidth < 320;
+          final compact =
+              constraints.maxWidth < 380 ||
+              MediaQuery.textScalerOf(context).scale(14) > 18;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -97,7 +101,7 @@ class ReminderCard extends StatelessWidget {
                   children: [
                     Tooltip(
                       message: 'Напоминание',
-                      child: GestureDetector(
+                      child: InkWell(
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute<void>(
@@ -106,8 +110,8 @@ class ReminderCard extends StatelessWidget {
                           ),
                         ),
                         child: Container(
-                          width: 36,
-                          height: 36,
+                          width: 48,
+                          height: 48,
                           decoration: const BoxDecoration(
                             color: card,
                             shape: BoxShape.circle,
@@ -157,46 +161,15 @@ class ReminderCard extends StatelessWidget {
                     const SizedBox(width: 12),
                     Semantics(
                       label: 'Вечернее напоминание',
-                      toggled: settings.enabled,
-                      enabled: controller.supported && !controller.busy,
-                      child: GestureDetector(
+                      child: Switch.adaptive(
                         key: const ValueKey('reminder-switch'),
-                        onTap: controller.supported && !controller.busy
-                            ? () => controller.update(
-                                settings.copyWith(enabled: !settings.enabled),
+                        value: settings.enabled,
+                        materialTapTargetSize: MaterialTapTargetSize.padded,
+                        onChanged: controller.supported && !controller.busy
+                            ? (value) => controller.update(
+                                settings.copyWith(enabled: value),
                               )
                             : null,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          width: 44,
-                          height: 24,
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: settings.enabled ? peach : inkOpacity(.2),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: AnimatedAlign(
-                            duration: const Duration(milliseconds: 180),
-                            alignment: settings.enabled
-                                ? Alignment.centerRight
-                                : Alignment.centerLeft,
-                            child: Container(
-                              width: 20,
-                              height: 20,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Color(0x1A000000),
-                                    blurRadius: 3,
-                                    offset: Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
                       ),
                     ),
                   ],

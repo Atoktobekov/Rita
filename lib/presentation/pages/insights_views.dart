@@ -13,6 +13,7 @@ const pageHeading = TextStyle(
   height: 1.25,
   fontWeight: FontWeight.w400,
 );
+
 TextStyle captionStyle([double opacity = .55]) =>
     TextStyle(fontSize: 14, height: 20 / 14, color: inkOpacity(opacity));
 
@@ -33,7 +34,10 @@ class ArchiveView extends StatefulWidget {
     required this.onEdit,
     required this.onOpenDay,
     required this.onChooseDate,
+    this.busy = false,
   });
+
+  final bool busy;
   final List<String> days;
   final List<Task> tasks;
   final DateTime today;
@@ -41,12 +45,14 @@ class ArchiveView extends StatefulWidget {
   final ValueChanged<Task> onEdit;
   final ValueChanged<DateTime> onOpenDay;
   final VoidCallback onChooseDate;
+
   @override
   State<ArchiveView> createState() => _ArchiveViewState();
 }
 
 class _ArchiveViewState extends State<ArchiveView> {
   String? open;
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,17 +102,18 @@ class _ArchiveViewState extends State<ArchiveView> {
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: Color.lerp(
-                                sage,
-                                peach,
-                                percent.clamp(12, 100) / 100,
+                                cream,
+                                ink,
+                                (percent * .85).round() / 100,
                               ),
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Text(
                               '$percent%',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 height: 1.55,
+                                color: percent > 45 ? cream : ink,
                               ),
                             ),
                           ),
@@ -166,25 +173,49 @@ class _ArchiveViewState extends State<ArchiveView> {
                                 children: [
                                   TaskCheck(
                                     size: 20,
+                                    title: task.title,
                                     done: task.done,
-                                    onTap: () => widget.onToggle(task),
+                                    onTap: widget.busy
+                                        ? null
+                                        : () => widget.onToggle(task),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: GestureDetector(
-                                      onTap: () => widget.onEdit(task),
-                                      behavior: HitTestBehavior.opaque,
-                                      child: Text(
-                                        task.title,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          height: 20 / 14,
-                                          color: task.done
-                                              ? inkOpacity(.5)
-                                              : ink,
-                                          decoration: task.done
-                                              ? TextDecoration.lineThrough
-                                              : null,
+                                    child: InkWell(
+                                      onTap: widget.busy
+                                          ? null
+                                          : () => widget.onEdit(task),
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          minHeight: 48,
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              task.title,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                height: 20 / 14,
+                                                color: task.done
+                                                    ? inkOpacity(.65)
+                                                    : ink,
+                                                decoration: task.done
+                                                    ? TextDecoration.lineThrough
+                                                    : null,
+                                              ),
+                                            ),
+                                            Text(
+                                              task.category,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: inkOpacity(.7),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
@@ -218,26 +249,109 @@ class _ArchiveViewState extends State<ArchiveView> {
   );
 }
 
+enum StatisticsMode { count, percent }
+
 class StatisticsView extends StatelessWidget {
   const StatisticsView({
     super.key,
     required this.statistics,
     required this.today,
+    required this.mode,
+    required this.onModeChanged,
   });
+
   final TaskStatistics statistics;
   final DateTime today;
+  final StatisticsMode mode;
+  final ValueChanged<StatisticsMode> onModeChanged;
+
   @override
   Widget build(BuildContext context) {
     final stats = statistics;
+    final showCount = mode == StatisticsMode.count;
+    final compact = MediaQuery.sizeOf(context).width < 360;
+    final days = stats.week.skip(1).toList();
+    final maximum = days.fold(
+      1,
+      (value, day) => day.completed > value ? day.completed : value,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Статистика', style: pageHeading),
-        const SizedBox(height: 20),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Expanded(child: Text('Статистика', style: pageHeading)),
+            PopupMenuButton<StatisticsMode>(
+              tooltip: 'Настройки статистики',
+              position: PopupMenuPosition.under,
+              offset: const Offset(0, 4),
+              onSelected: onModeChanged,
+              color: card,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              icon: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: card,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: inkOpacity(.1)),
+                ),
+                child: const Center(
+                  child: DesignIcon(DesignSymbol.settings, size: 20),
+                ),
+              ),
+              itemBuilder: (_) => [
+                const PopupMenuItem<StatisticsMode>(
+                  enabled: false,
+                  child: Text(
+                    'ПОКАЗЫВАТЬ',
+                    style: TextStyle(fontSize: 11, letterSpacing: 1.1),
+                  ),
+                ),
+                for (final (value, label) in [
+                  (StatisticsMode.count, 'Число задач'),
+                  (StatisticsMode.percent, 'Проценты'),
+                ])
+                  PopupMenuItem(
+                    value: value,
+                    child: Semantics(
+                      selected: mode == value,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: mode == value ? sand : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(child: Text(label)),
+                            if (mode == value)
+                              const DesignIcon(
+                                DesignSymbol.check,
+                                size: 16,
+                                stroke: 2.6,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
         Container(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(compact ? 16 : 24),
           decoration: BoxDecoration(
-            color: peach,
+            color: cream,
+            border: Border.all(color: inkOpacity(.1)),
             borderRadius: BorderRadius.circular(28),
           ),
           child: Row(
@@ -247,13 +361,35 @@ class StatisticsView extends StatelessWidget {
                 size: 116,
                 stroke: 12,
                 fontSize: 30,
+                child: showCount
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${stats.completed}',
+                            style: const TextStyle(fontSize: 30, height: 1),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'из ${stats.total}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: inkOpacity(.55),
+                            ),
+                          ),
+                        ],
+                      )
+                    : null,
               ),
-              const SizedBox(width: 24),
+              SizedBox(width: compact ? 16 : 24),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Процент выполнения', style: captionStyle(.65)),
+                    Text(
+                      showCount ? 'Выполнено задач' : 'Процент выполнения',
+                      style: captionStyle(.65),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       stats.percent >= 70
@@ -290,7 +426,11 @@ class StatisticsView extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '${i == 0 ? stats.total : stats.completed}',
+                        i == 0
+                            ? '${stats.total}'
+                            : showCount
+                            ? '${stats.completed}'
+                            : '${stats.percent}%',
                         style: const TextStyle(fontSize: 36, height: 1.11),
                       ),
                     ],
@@ -317,11 +457,11 @@ class StatisticsView extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               SizedBox(
-                height: 144,
+                height: 114 + MediaQuery.textScalerOf(context).scale(10) * 3,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    for (final (i, day) in stats.week.skip(1).indexed) ...[
+                    for (final (i, day) in days.indexed) ...[
                       if (i > 0) const SizedBox(width: 8),
                       Expanded(
                         child: Semantics(
@@ -331,22 +471,32 @@ class StatisticsView extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Text(
-                                '${(day.ratio * 100).round()}',
+                                showCount
+                                    ? '${day.completed}'
+                                    : '${(day.ratio * 100).round()}%',
+                                key: ValueKey('chart-value-${dayKey(day.day)}'),
                                 style: TextStyle(
                                   fontSize: 10,
                                   height: 1.5,
                                   fontWeight: FontWeight.w700,
-                                  color: inkOpacity(.5),
+                                  color: inkOpacity(.6),
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              Container(
+                              AnimatedContainer(
+                                key: ValueKey('chart-bar-${dayKey(day.day)}'),
+                                duration: const Duration(milliseconds: 500),
                                 height:
-                                    (144 * (day.ratio < .04 ? .04 : day.ratio))
-                                        .clamp(0, 98),
-                                decoration: const BoxDecoration(
-                                  color: peach,
-                                  borderRadius: BorderRadius.vertical(
+                                    98 *
+                                    (showCount
+                                            ? day.completed / maximum
+                                            : day.ratio)
+                                        .clamp(.04, 1.0),
+                                decoration: BoxDecoration(
+                                  color: dayKey(day.day) == dayKey(today)
+                                      ? ink
+                                      : inkOpacity(.25),
+                                  borderRadius: const BorderRadius.vertical(
                                     top: Radius.circular(12),
                                   ),
                                 ),
@@ -380,7 +530,9 @@ class StatisticsView extends StatelessWidget {
 
 class AwardsView extends StatelessWidget {
   const AwardsView({super.key, required this.awards});
+
   final List<TaskAward> awards;
+
   @override
   Widget build(BuildContext context) {
     final got = awards.where((a) => a.unlocked).length;
@@ -396,7 +548,7 @@ class AwardsView extends StatelessWidget {
           child: LinearProgressIndicator(
             value: awards.isEmpty ? 0 : got / awards.length,
             minHeight: 8,
-            color: peach,
+            color: ink,
             backgroundColor: sand,
           ),
         ),
@@ -425,7 +577,9 @@ class AwardsView extends StatelessWidget {
 
 class _AwardCard extends StatelessWidget {
   const _AwardCard(this.award);
+
   final TaskAward award;
+
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(16),
@@ -442,11 +596,12 @@ class _AwardCard extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: award.unlocked ? peach : inkOpacity(.1),
+            color: award.unlocked ? cream : inkOpacity(.1),
+            border: award.unlocked ? Border.all(color: inkOpacity(.15)) : null,
             boxShadow: award.unlocked
                 ? const [
                     BoxShadow(
-                      color: Color(0xCCFFAA46),
+                      color: Color(0x402B2116),
                       blurRadius: 14,
                       spreadRadius: -4,
                       offset: Offset(0, 6),

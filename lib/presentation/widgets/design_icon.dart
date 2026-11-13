@@ -15,9 +15,15 @@ enum DesignSymbol {
   trash,
   flame,
   chevron,
+  settings,
+  calendar,
 }
 
 const _paths = {
+  DesignSymbol.calendar:
+      'M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z',
+  DesignSymbol.settings:
+      'M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z M15 12a3 3 0 1 0-6 0a3 3 0 1 0 6 0',
   DesignSymbol.check: 'M5 12.5l4.5 4.5L19 7.5',
   DesignSymbol.plus: 'M12 5v14M5 12h14',
   DesignSymbol.sun:
@@ -43,11 +49,13 @@ class DesignIcon extends StatelessWidget {
     this.filled = false,
     this.stroke = 1.8,
   });
+
   final DesignSymbol symbol;
   final double size;
   final Color color;
   final bool filled;
   final double stroke;
+
   @override
   Widget build(BuildContext context) => SvgPicture.string(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="$stroke" stroke-linecap="round" stroke-linejoin="round"><path d="${_paths[symbol]}"/></svg>',

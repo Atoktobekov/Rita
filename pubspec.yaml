@@ -18,6 +18,8 @@ dependencies:
   flutter_timezone: ^4.1.1
   timezone: ^0.10.1
   flutter_svg: ^2.0.17
+  file_picker: ^10.3.10
+  cross_file: ^0.3.4+2
 
 dev_dependencies:
   flutter_test:

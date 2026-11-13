@@ -13,6 +13,129 @@ import 'package:timezone/timezone.dart' as tz;
 import 'support/fakes.dart';
 
 void main() {
+  test(
+    'New completion awards unlock at their thresholds and ignore future tasks',
+    () {
+      final today = DateTime(2026, 11, 4);
+      for (final (title, threshold) in [
+        ('Четверть сотни', 25),
+        ('Сотня', 100),
+        ('Большой прогресс', 250),
+      ]) {
+        final tasks = List.generate(
+          threshold - 1,
+          (i) => Task(id: '$i', title: 'Готово', day: '2026-11-04', done: true),
+        );
+        tasks.add(
+          const Task(
+            id: 'future',
+            title: 'Завтра',
+            day: '2026-11-05',
+            done: true,
+          ),
+        );
+        final before = TaskStatistics(tasks, today);
+        expect(before.awards, hasLength(11));
+        expect(
+          before.awards.singleWhere((a) => a.title == title).unlocked,
+          false,
+        );
+        tasks.add(
+          const Task(
+            id: 'last',
+            title: 'Последняя',
+            day: '2026-11-04',
+            done: true,
+          ),
+        );
+        expect(
+          TaskStatistics(
+            tasks,
+            today,
+          ).awards.singleWhere((a) => a.title == title).unlocked,
+          true,
+        );
+        tasks[tasks.length - 1] = tasks.last.copyWith(done: false);
+        expect(
+          TaskStatistics(
+            tasks,
+            today,
+          ).awards.singleWhere((a) => a.title == title).unlocked,
+          false,
+        );
+      }
+    },
+  );
+
+  test('Five perfect days need five nonempty completed plans', () {
+    final today = DateTime(2026, 11, 10);
+    final tasks = List.generate(
+      5,
+      (i) => Task(
+        id: '$i',
+        title: 'План',
+        day: dayKey(DateTime(2026, 11, 2 + i * 2)),
+        done: true,
+      ),
+    );
+    bool unlocked(List<Task> entries) => TaskStatistics(
+      entries,
+      today,
+    ).awards.singleWhere((a) => a.title == 'Пять на отлично').unlocked;
+    expect(unlocked(tasks.take(4).toList()), false);
+    expect(unlocked(tasks), true);
+    expect(
+      unlocked([
+        ...tasks,
+        const Task(id: 'unfinished', title: 'Ещё дело', day: '2026-11-10'),
+      ]),
+      false,
+    );
+    expect(unlocked([]), false);
+  });
+
+  test(
+    'Fourteen day award requires a consecutive series at least half complete',
+    () {
+      final today = DateTime(2027, 1, 5);
+      final tasks = [
+        for (var i = 0; i < 14; i++) ...[
+          Task(
+            id: 'done-$i',
+            title: 'Готово',
+            day: dayKey(DateTime(2027, 1, 4 - i)),
+            done: true,
+          ),
+          Task(
+            id: 'pending-$i',
+            title: 'План',
+            day: dayKey(DateTime(2027, 1, 4 - i)),
+          ),
+        ],
+      ];
+      TaskAward award(List<Task> entries) => TaskStatistics(
+        entries,
+        today,
+      ).awards.singleWhere((a) => a.title == 'Две недели в ритме');
+      expect(award(tasks).unlocked, true);
+      expect(
+        award(tasks.where((t) => t.day != '2026-12-22').toList()).unlocked,
+        false,
+      );
+      expect(
+        award(tasks.where((t) => t.day != '2026-12-30').toList()).unlocked,
+        false,
+      );
+      expect(
+        award([
+          ...tasks,
+          const Task(id: 'extra', title: 'Ещё дело', day: '2026-12-30'),
+        ]).unlocked,
+        false,
+      );
+    },
+  );
+
   test('Streak uses consecutive calendar days and ignores future plans', () {
     final tasks = [
       const Task(id: '1', title: 'Done', day: '2026-11-03', done: true),

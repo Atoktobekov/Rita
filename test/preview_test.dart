@@ -23,6 +23,11 @@ void main() {
           'Google Sans',
         )..addFont(rootBundle.load('assets/fonts/GoogleSans.ttf'))).load();
       });
+      await tester.runAsync(() async {
+        await (FontLoader(
+          'MaterialIcons',
+        )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+      });
       final repository = MemoryTaskRepository()..tasks.addAll(figmaFixture());
       final settings = MemoryReminderRepository()
         ..settings = const ReminderSettings(enabled: true);
@@ -65,18 +70,35 @@ void main() {
       }
 
       await capture('figma-day');
+      await tester.tap(find.byKey(const ValueKey('day-selector')));
+      await tester.pumpAndSettle();
+      await capture('day-picker');
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Архив'));
       await tester.pumpAndSettle();
       await capture('figma-archive');
       await tester.tap(find.text('Статистика'));
       await tester.pumpAndSettle();
       await capture('figma-statistics');
+      await tester.tap(find.byTooltip('Настройки статистики'));
+      await tester.pumpAndSettle();
+      await capture('figma-statistics-settings');
+      await tester.tap(find.text('Проценты'));
+      await tester.pumpAndSettle();
+      await capture('figma-statistics-percent');
       await tester.tap(find.text('Ачивки'));
       await tester.pumpAndSettle();
       await capture('figma-awards');
+      await tester.drag(find.byType(ListView), const Offset(0, -800));
+      await tester.pumpAndSettle();
+      await capture('figma-awards-more');
       tester.view.physicalSize = const Size(320, 780);
       await tester.pumpAndSettle();
       await capture('figma-awards-narrow');
+      await tester.tap(find.text('Статистика'));
+      await tester.pumpAndSettle();
+      await capture('figma-statistics-narrow');
       await tester.tap(find.text('Сегодня'));
       await tester.pumpAndSettle();
       await capture('figma-day-narrow');

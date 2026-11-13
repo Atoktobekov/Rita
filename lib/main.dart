@@ -15,9 +15,14 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await Hive.initFlutter();
-    final tasks = await Hive.openBox<dynamic>('tasks_v1');
+    final tasks = await Hive.openBox<dynamic>('tasks_v2');
+    final legacyTasks = tasks.containsKey('state')
+        ? null
+        : await Hive.openBox<dynamic>('tasks_v1');
     final settings = await Hive.openBox<dynamic>('settings_v1');
-    final planner = PlannerController(ManageTasks(HiveTaskRepository(tasks)));
+    final planner = PlannerController(
+      ManageTasks(HiveTaskRepository(tasks, legacyBox: legacyTasks)),
+    );
     final reminder = ReminderController(
       ManageReminder(
         HiveReminderRepository(settings),

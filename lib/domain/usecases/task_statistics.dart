@@ -3,9 +3,11 @@ import '../entities/task.dart';
 
 class DayProgress {
   const DayProgress(this.day, this.total, this.completed);
+
   final DateTime day;
   final int total;
   final int completed;
+
   double get ratio => total == 0 ? 0 : completed / total;
 }
 
@@ -55,13 +57,16 @@ class TaskStatistics {
   late final int perfectDays;
   late final List<DayProgress> week;
   late final int streak;
+
   int get percent => total == 0 ? 0 : (completed / total * 100).round();
+
   List<bool> get achievements => [
     completed >= 1,
     completed >= 10,
     perfectDays > 0,
     completed >= 50,
   ];
+
   List<TaskAward> get awards => [
     TaskAward('Первый шаг', 'Выполни первую задачу', '1', completed >= 1),
     TaskAward('Десятка', '10 выполненных задач', '10', completed >= 10),
@@ -69,11 +74,32 @@ class TaskStatistics {
     TaskAward('Серия 3 дня', 'Три дня подряд от 50%', '3д', streak >= 3),
     TaskAward('Неделя силы', 'Серия 7 дней', '7д', streak >= 7),
     TaskAward('Полсотни', '50 выполненных задач', '50', completed >= 50),
+    TaskAward('Четверть сотни', '25 выполненных задач', '25', completed >= 25),
+    TaskAward('Сотня', '100 выполненных задач', '100', completed >= 100),
+    TaskAward(
+      'Большой прогресс',
+      '250 выполненных задач',
+      '250',
+      completed >= 250,
+    ),
+    TaskAward(
+      'Пять на отлично',
+      '5 дней со 100% выполнением',
+      '5д',
+      perfectDays >= 5,
+    ),
+    TaskAward(
+      'Две недели в ритме',
+      '14 дней подряд от 50%',
+      '14д',
+      streak >= 14,
+    ),
   ];
 }
 
 class TaskAward {
   const TaskAward(this.title, this.description, this.glyph, this.unlocked);
+
   final String title;
   final String description;
   final String glyph;

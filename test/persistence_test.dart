@@ -17,29 +17,31 @@ void main() {
   });
 
   test(
-    'Version 0.1 records reopen without migration; moving a task keeps its identity',
+    'Version 0.1 migrates without changing legacy data; moving keeps identity',
     () async {
-      var box = await Hive.openBox<dynamic>('tasks_v1');
-      await box.put('legacy', {
+      final legacy = await Hive.openBox<dynamic>('tasks_v1');
+      var box = await Hive.openBox<dynamic>('tasks_v2');
+      await legacy.put('legacy', {
         'id': 'legacy',
         'title': 'Старая задача',
         'day': '2026-11-04',
         'category': 'Работа',
         'done': true,
       });
-      var repository = HiveTaskRepository(box);
-      final task = (await repository.load()).single;
+      var repository = HiveTaskRepository(box, legacyBox: legacy);
+      final task = (await repository.load()).tasks.single;
       await repository.save(task.copyWith(day: '2026-11-05'));
       await box.close();
-      box = await Hive.openBox<dynamic>('tasks_v1');
+      box = await Hive.openBox<dynamic>('tasks_v2');
       repository = HiveTaskRepository(box);
-      final reopened = (await repository.load()).single;
+      final reopened = (await repository.load()).tasks.single;
       expect(reopened.id, 'legacy');
       expect(reopened.day, '2026-11-05');
       expect(reopened.category, 'Работа');
       expect(reopened.done, true);
       await repository.delete(reopened.id);
-      expect(await repository.load(), isEmpty);
+      expect((await repository.load()).tasks, isEmpty);
+      expect(legacy.get('legacy')['day'], '2026-11-04');
     },
   );
 

@@ -1,15 +1,25 @@
 import '../../domain/entities/task.dart';
+import '../../domain/entities/task_validation.dart';
 
 class TaskRecord {
   static Task decode(dynamic value) {
-    final map = Map<String, dynamic>.from(value as Map);
-    return Task(
-      id: map['id'] as String,
-      title: map['title'] as String,
-      day: map['day'] as String,
-      category: map['category'] as String? ?? 'Личное',
-      done: map['done'] as bool? ?? false,
+    if (value is! Map ||
+        value['id'] is! String ||
+        value['title'] is! String ||
+        value['day'] is! String ||
+        (value['category'] != null && value['category'] is! String) ||
+        (value['done'] != null && value['done'] is! bool)) {
+      throw const FormatException('Некорректная запись задачи');
+    }
+    final task = Task(
+      id: value['id'] as String,
+      title: value['title'] as String,
+      day: value['day'] as String,
+      category: value['category'] as String? ?? 'Личное',
+      done: value['done'] as bool? ?? false,
     );
+    validateTask(task);
+    return task;
   }
 
   static Map<String, dynamic> encode(Task task) => {

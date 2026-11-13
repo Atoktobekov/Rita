@@ -39,18 +39,146 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> reveal(WidgetTester tester, Finder finder) async {
+    if (finder.evaluate().isEmpty) {
+      final scrollable = find.byType(Scrollable).first;
+      tester.state<ScrollableState>(scrollable).position.jumpTo(0);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(finder, 200, scrollable: scrollable);
+    }
+    await tester.ensureVisible(finder);
+    await tester.pumpAndSettle();
+  }
+
   Future<void> openDayMenu(WidgetTester tester) async {
+    await reveal(tester, find.byKey(const ValueKey('day-selector')));
     await tester.tap(find.byKey(const ValueKey('day-selector')));
     await tester.pumpAndSettle();
   }
 
   Future<void> quickAdd(WidgetTester tester, String title) async {
-    await tester.ensureVisible(find.byKey(const ValueKey('quick-task')));
+    await reveal(tester, find.byKey(const ValueKey('quick-task')));
     await tester.enterText(find.byKey(const ValueKey('quick-task')), title);
     await tester.tap(find.byKey(const ValueKey('quick-add')));
     tester.testTextInput.hide();
     await tester.pumpAndSettle();
   }
+
+  testWidgets('Date menu keeps today and tomorrow separate across midnight', (
+    tester,
+  ) async {
+    await open(tester);
+    expect(find.byKey(const ValueKey('day-tab-0')), findsNothing);
+    await quickAdd(tester, 'Сегодняшний план');
+    await openDayMenu(tester);
+    await tester.tap(find.byKey(const ValueKey('tomorrow')));
+    await tester.pumpAndSettle();
+    expect(dayKey(planner.selected), '2027-01-01');
+    expect(find.text('Сегодняшний план'), findsNothing);
+    await quickAdd(tester, 'Завтрашний план');
+    await openDayMenu(tester);
+    await tester.tap(find.byKey(const ValueKey('today')));
+    await tester.pumpAndSettle();
+    expect(dayKey(planner.selected), '2026-12-31');
+    expect(find.text('Завтрашний план'), findsNothing);
+    expect(find.text('Сегодняшний план'), findsOneWidget);
+    now = DateTime(2027, 1, 1);
+    await tester.pump(const Duration(seconds: 21));
+    await tester.pumpAndSettle();
+    expect(dayKey(planner.selected), '2027-01-01');
+    expect(find.text('Завтрашний план'), findsOneWidget);
+    expect(planner.tasks, hasLength(2));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'Repeated quick entry keeps keyboard available with sentence capitalization',
+    (tester) async {
+      await open(tester);
+      final field = find.byKey(const ValueKey('quick-task'));
+      await reveal(tester, field);
+      await tester.showKeyboard(field);
+      await tester.enterText(field, 'Первая задача');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(planner.tasks.single.title, 'Первая задача');
+      expect(tester.widget<TextField>(field).controller!.text, isEmpty);
+      expect(tester.widget<TextField>(field).focusNode!.hasFocus, true);
+      expect(tester.testTextInput.isVisible, true);
+      await tester.enterText(field, 'Вторая задача');
+      await tester.tap(find.byKey(const ValueKey('quick-add')));
+      await tester.pumpAndSettle();
+      expect(planner.tasks.map((task) => task.title), [
+        'Первая задача',
+        'Вторая задача',
+      ]);
+      expect(tester.widget<TextField>(field).controller!.text, isEmpty);
+      expect(tester.widget<TextField>(field).focusNode!.hasFocus, true);
+      expect(tester.testTextInput.isVisible, true);
+      tester.testTextInput.hide();
+      await tester.tap(field);
+      await tester.pumpAndSettle();
+      expect(tester.testTextInput.isVisible, true);
+      expect(
+        tester.widget<TextField>(field).textCapitalization,
+        TextCapitalization.sentences,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'Statistics switch counts and percentages and retain mode across tabs',
+    (tester) async {
+      for (final task in [
+        const Task(id: '1', title: 'Первое', day: '2026-12-31', done: true),
+        const Task(id: '2', title: 'Второе', day: '2026-12-31', done: true),
+        const Task(id: '3', title: 'Третье', day: '2026-12-31'),
+        const Task(id: '4', title: 'Четвёртое', day: '2026-12-31'),
+        const Task(id: '5', title: 'Вчера', day: '2026-12-30', done: true),
+        const Task(id: '6', title: 'Завтра', day: '2027-01-01', done: true),
+      ]) {
+        await planner.save(task);
+      }
+      await open(tester);
+      await tester.tap(find.text('Статистика'));
+      await tester.pumpAndSettle();
+      expect(find.text('Выполнено задач'), findsOneWidget);
+      expect(find.text('из 5'), findsOneWidget);
+      final todayValue = find.byKey(const ValueKey('chart-value-2026-12-31'));
+      final yesterdayValue = find.byKey(
+        const ValueKey('chart-value-2026-12-30'),
+      );
+      final todayBar = find.byKey(const ValueKey('chart-bar-2026-12-31'));
+      final yesterdayBar = find.byKey(const ValueKey('chart-bar-2026-12-30'));
+      expect(tester.widget<Text>(todayValue).data, '2');
+      expect(tester.getSize(todayBar).height, 98);
+      expect(tester.getSize(yesterdayBar).height, 49);
+      await tester.tap(find.byTooltip('Настройки статистики'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Проценты'));
+      await tester.pumpAndSettle();
+      expect(find.text('Процент выполнения'), findsOneWidget);
+      expect(tester.widget<Text>(todayValue).data, '50%');
+      expect(tester.widget<Text>(yesterdayValue).data, '100%');
+      expect(tester.getSize(todayBar).height, 49);
+      expect(tester.getSize(yesterdayBar).height, 98);
+      await tester.tap(find.text('Ачивки'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Статистика'));
+      await tester.pumpAndSettle();
+      expect(find.text('Процент выполнения'), findsOneWidget);
+      await tester.tap(find.byTooltip('Настройки статистики'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Число задач'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<Text>(todayValue).data, '2');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets(
     'Tomorrow, quick add, validation, completion, edit, deletion and undo',
@@ -63,7 +191,8 @@ void main() {
       expect(find.text('Напиши название задачи'), findsOneWidget);
       await quickAdd(tester, 'Прочитать 10 страниц');
       expect(planner.tasks.single.day, '2027-01-01');
-      await tester.ensureVisible(
+      await reveal(
+        tester,
         find.byKey(ValueKey('check-${planner.tasks.single.id}')),
       );
       await tester.tap(
@@ -77,7 +206,7 @@ void main() {
         find.byType(TextFormField),
         'Прочитать 20 страниц',
       );
-      await tester.ensureVisible(find.text('Сохранить изменения'));
+      await reveal(tester, find.text('Сохранить изменения'));
       await tester.tap(find.text('Сохранить изменения'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Удалить'));
@@ -106,13 +235,13 @@ void main() {
     await quickAdd(tester, 'На другую дату');
     await tester.tap(find.text('На другую дату'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const ValueKey('editor-date')));
+    await reveal(tester, find.byKey(const ValueKey('editor-date')));
     await tester.tap(find.byKey(const ValueKey('editor-date')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('18').first);
     await tester.tap(find.text('ОК'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Сохранить изменения'));
+    await reveal(tester, find.text('Сохранить изменения'));
     await tester.tap(find.text('Сохранить изменения'));
     await tester.pumpAndSettle();
     expect(planner.tasks.single.day, '2026-12-18');
@@ -145,8 +274,8 @@ void main() {
       expect(find.text('Последние 6 дней'), findsOneWidget);
       await tester.tap(find.text('Ачивки'));
       await tester.pumpAndSettle();
-      expect(find.text('Открыто 0 из 6'), findsOneWidget);
-      await tester.tap(find.text('Сегодня'));
+      expect(find.text('Открыто 0 из 11'), findsOneWidget);
+      await tester.tap(find.text('Сегодня').last);
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('reminder-switch')));
       await tester.pumpAndSettle();

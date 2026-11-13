@@ -49,7 +49,7 @@ function Ring({ value, size = 120, stroke = 12, children }: { value: number; siz
 function Check({ done, onClick }: { done: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} aria-label="Выполнено"
-      className={`w-7 h-7 rounded-full border-2 grid place-items-center shrink-0 transition-colors ${done ? 'bg-moss border-moss text-ink' : 'border-ink/25 text-transparent'}`}>
+      className={`w-7 h-7 rounded-full border-2 grid place-items-center shrink-0 transition-colors ${done ? 'bg-ink border-ink text-moss' : 'border-ink/25 text-transparent'}`}>
       {done && <span className="pop"><I d={P.check} className="w-4 h-4" sw={3} /></span>}
     </button>
   )
@@ -57,7 +57,18 @@ function Check({ done, onClick }: { done: boolean; onClick: () => void }) {
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('today')
-  const [tasks, setTasks] = useState<Task[]>(mk([['Зарядка 15 минут', true], ['Сделать экран статистики', false], ['Прочитать 20 страниц', false], ['Выпить 2 л воды', true]]))
+  const [day, setDay] = useState<'-1' | '0' | '1'>('0')
+  const [byDay, setByDay] = useState<Record<string, Task[]>>({
+    '-1': HISTORY[0].tasks,
+    '0': mk([['Зарядка 15 минут', true], ['Сделать экран статистики', false], ['Прочитать 20 страниц', false], ['Выпить 2 л воды', true]]),
+    '1': mk([['Составить план недели', false]]),
+  })
+  const tasks = byDay[day]
+  const setTasks = (f: (t: Task[]) => Task[]) => setByDay((m) => ({ ...m, [day]: f(m[day]) }))
+  const todayTasks = byDay['0']
+  const history = [{ ...HISTORY[0], tasks: byDay['-1'] }, ...HISTORY.slice(1)]
+  const [mode, setMode] = useState<'count' | 'percent'>('count')
+  const [gear, setGear] = useState(false)
   const [draft, setDraft] = useState('')
   const [remind, setRemind] = useState(true)
   const [time, setTime] = useState('21:30')
@@ -70,12 +81,12 @@ export default function App() {
   }
   const toggle = (id: number) => setTasks((t) => t.map((x) => (x.id === id ? { ...x, done: !x.done } : x)))
 
-  const all = useMemo(() => [{ date: 'today', label: 'Сегодня', tasks }, ...HISTORY], [tasks])
+  const all = useMemo(() => [{ date: 'today', label: 'Сегодня', tasks: todayTasks }, ...history], [todayTasks, history])
   const total = all.reduce((s, d) => s + d.tasks.length, 0)
   const doneN = all.reduce((s, d) => s + d.tasks.filter((x) => x.done).length, 0)
   const rate = total ? Math.round((doneN / total) * 100) : 0
   const todayP = pct(tasks)
-  const streak = HISTORY.filter((d) => pct(d.tasks) >= 50).length + (todayP >= 50 ? 1 : 0)
+  const streak = history.filter((d) => pct(d.tasks) >= 50).length + (pct(todayTasks) >= 50 ? 1 : 0)
 
   const awards = [
     { t: 'Первый шаг', d: 'Выполни первую задачу', ok: doneN >= 1, g: '1' },
@@ -104,10 +115,19 @@ export default function App() {
         <main key={tab} className="flex-1 overflow-y-auto px-5 pt-5 pb-28 rise [scrollbar-width:none]">
           {tab === 'today' && (
             <>
-              <p className="text-sm text-ink/55 font-medium">Среда, 15 января</p>
-              <h1 className="font-serif text-[34px] leading-tight mt-1">Твой день</h1>
+              <p className="text-sm text-ink/55 font-medium">{{ '-1': 'Вторник, 14 января', '0': 'Среда, 15 января', '1': 'Четверг, 16 января' }[day]}</p>
+              <h1 className="font-serif text-[34px] leading-tight mt-1">{{ '-1': 'Вчера', '0': 'Твой день', '1': 'Завтра' }[day]}</h1>
 
-              <section className="mt-5 rounded-[28px] bg-moss text-ink p-5 flex items-center gap-5 relative overflow-hidden">
+              <div role="tablist" className="relative mt-4 grid grid-cols-3 p-1 rounded-2xl bg-sand border border-ink/5">
+                <span className="absolute top-1 bottom-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-xl bg-ink shadow-md transition-transform duration-300 ease-out"
+                  style={{ transform: `translateX(${(Number(day) + 1) * 100}%)` }} />
+                {([['-1', 'Вчера'], ['0', 'Сегодня'], ['1', 'Завтра']] as const).map(([k, l]) => (
+                  <button key={k} role="tab" aria-selected={day === k} onClick={() => setDay(k)}
+                    className={`relative z-10 py-2.5 text-sm font-semibold transition-colors duration-300 ${day === k ? 'text-moss' : 'text-ink/55'}`}>{l}</button>
+                ))}
+              </div>
+
+              <section className="mt-5 rounded-[28px] bg-moss border border-ink/10 text-ink p-5 flex items-center gap-5 relative overflow-hidden">
                 <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/30" />
                 <Ring value={todayP} size={104} stroke={11}>
                   <span className="font-serif text-2xl">{todayP}%</span>
@@ -119,19 +139,19 @@ export default function App() {
                 </div>
               </section>
 
-              <div className="mt-4 rounded-2xl bg-sand/70 px-4 py-3 flex items-center gap-3">
-                <span className="w-9 h-9 rounded-full bg-card grid place-items-center text-ink"><I d={P.bell} className="w-5 h-5" /></span>
+              <div className="mt-3 rounded-xl bg-sand/70 px-3 py-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-card grid place-items-center text-ink"><I d={P.bell} className="w-3.5 h-3.5" /></span>
                 <div className="flex-1 leading-tight">
-                  <p className="text-sm font-semibold">Вечернее напоминание</p>
-                  <p className="text-xs text-ink/55">{remind ? 'Заполнить план на завтра' : 'Выключено'}</p>
+                  <p className="text-[11px] font-semibold">Вечернее напоминание</p>
+                  <p className="text-[9px] text-ink/55">{remind ? 'Заполнить план на завтра' : 'Выключено'}</p>
                 </div>
                 {remind && (
-                  <select value={time} onChange={(e) => setTime(e.target.value)} className="text-sm font-bold bg-card border border-ink/5 rounded-lg px-2 py-1 outline-none">
+                  <select value={time} onChange={(e) => setTime(e.target.value)} className="text-[11px] font-bold bg-card rounded-md px-1 py-0.5 outline-none">
                     {['21:00', '21:30', '22:00'].map((t) => <option key={t}>{t}</option>)}
                   </select>
                 )}
-                <button onClick={() => setRemind(!remind)} role="switch" aria-checked={remind} className={`w-11 h-6 rounded-full p-0.5 transition-colors ${remind ? 'bg-moss' : 'bg-ink/20'}`}>
-                  <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${remind ? 'translate-x-5' : ''}`} />
+                <button onClick={() => setRemind(!remind)} role="switch" aria-checked={remind} className={`w-8 h-[18px] rounded-full p-0.5 transition-colors ${remind ? 'bg-ink' : 'bg-ink/20'}`}>
+                  <span className={`block w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${remind ? 'translate-x-3.5' : ''}`} />
                 </button>
               </div>
 
@@ -141,7 +161,7 @@ export default function App() {
                   <li key={t.id} className="group flex items-center gap-3 bg-card border border-ink/5 rounded-2xl px-4 py-3.5 shadow-[0_1px_0_rgba(0,0,0,.04)]">
                     <Check done={t.done} onClick={() => toggle(t.id)} />
                     <span className={`flex-1 text-[15px] font-medium transition-all ${t.done ? 'line-through text-ink/35' : ''}`}>{t.text}</span>
-                    <button onClick={() => setTasks((x) => x.filter((y) => y.id !== t.id))} aria-label="Удалить" className="text-ink/25 hover:text-ink"><I d={P.trash} className="w-4.5 h-4.5" /></button>
+                    <button onClick={() => setTasks((x) => x.filter((y) => y.id !== t.id))} aria-label="Удалить" className="text-ink/25 hover:text-ink"><I d={P.trash} className="w-[21px] h-[21px]" /></button>
                   </li>
                 ))}
                 {!tasks.length && <li className="text-center text-ink/45 py-8 text-sm">Пока пусто. Запланируй свой день.</li>}
@@ -149,7 +169,7 @@ export default function App() {
 
               <form onSubmit={(e) => { e.preventDefault(); add() }} className="mt-3 flex items-center gap-2 border-2 border-dashed border-ink/20 rounded-2xl pl-4 pr-1.5 py-1.5 focus-within:border-moss">
                 <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Новая задача…" className="flex-1 bg-transparent outline-none text-[15px] py-2" />
-                <button type="submit" aria-label="Добавить" className="w-10 h-10 rounded-xl bg-clay text-ink grid place-items-center"><I d={P.plus} /></button>
+                <button type="submit" aria-label="Добавить" className="w-10 h-10 rounded-xl bg-ink text-moss grid place-items-center"><I d={P.plus} /></button>
               </form>
 
               <p className="mt-6 flex items-center justify-center gap-2 text-xs text-ink/45"><I d={P.moon} className="w-4 h-4" /> После полуночи карточка уйдёт в архив</p>
@@ -161,12 +181,12 @@ export default function App() {
               <h1 className="font-serif text-[34px] leading-tight">Архив</h1>
               <p className="text-sm text-ink/55 mt-1">Прошедшие дни можно редактировать</p>
               <div className="mt-5 space-y-3">
-                {HISTORY.map((d) => {
+                {history.map((d) => {
                   const p = pct(d.tasks), isOpen = open === d.date
                   return (
                     <div key={d.date} className="bg-card border border-ink/5 rounded-3xl overflow-hidden">
                       <button onClick={() => setOpen(isOpen ? null : d.date)} className="w-full flex items-center gap-4 p-4 text-left">
-                        <div className="w-14 h-14 rounded-2xl grid place-items-center font-serif text-lg shrink-0" style={{ background: `color-mix(in srgb, var(--color-moss) ${Math.max(p, 12)}%, var(--color-sage))`, color: 'var(--color-ink)' }}>{p}%</div>
+                        <div className="w-14 h-14 rounded-2xl grid place-items-center font-serif text-lg shrink-0" style={{ background: `color-mix(in srgb, var(--color-ink) ${Math.round(p * 0.85)}%, var(--color-moss))`, color: p > 45 ? '#fff8e7' : 'var(--color-ink)' }}>{p}%</div>
                         <div className="flex-1">
                           <p className="font-semibold">{d.label}</p>
                           <p className="text-xs text-ink/50">{d.tasks.filter((t) => t.done).length} из {d.tasks.length} задач</p>
@@ -177,7 +197,7 @@ export default function App() {
                         <ul className="px-4 pb-4 space-y-2 rise">
                           {d.tasks.map((t) => (
                             <li key={t.id} className="flex items-center gap-3 text-sm">
-                              <span className={`w-5 h-5 rounded-full grid place-items-center ${t.done ? 'bg-moss text-ink' : 'border-2 border-ink/20'}`}>{t.done && <I d={P.check} className="w-3 h-3" sw={3.5} />}</span>
+                              <span className={`w-5 h-5 rounded-full grid place-items-center ${t.done ? 'bg-ink text-moss' : 'border-2 border-ink/20'}`}>{t.done && <I d={P.check} className="w-3 h-3" sw={3.5} />}</span>
                               <span className={t.done ? 'text-ink/50 line-through' : ''}>{t.text}</span>
                             </li>
                           ))}
@@ -192,28 +212,63 @@ export default function App() {
 
           {tab === 'stats' && (
             <>
-              <h1 className="font-serif text-[34px] leading-tight">Статистика</h1>
-              <section className="mt-5 rounded-[28px] bg-moss text-ink p-6 flex items-center gap-6">
-                <Ring value={rate} size={116} stroke={12}><span className="font-serif text-3xl">{rate}%</span></Ring>
-                <div><p className="text-ink/65 text-sm">Процент выполнения</p><p className="font-serif text-xl leading-snug mt-1">{rate >= 70 ? 'Отличный темп!' : 'Есть куда расти'}</p></div>
+              <div className="flex items-start justify-between">
+                <h1 className="font-serif text-[34px] leading-tight">Статистика</h1>
+                <div className="relative">
+                  <button onClick={() => setGear(!gear)} aria-label="Настройки статистики" aria-expanded={gear}
+                    className={`w-10 h-10 rounded-full grid place-items-center border border-ink/10 transition-colors ${gear ? 'bg-ink text-moss' : 'bg-card text-ink'}`}>
+                    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" /></svg>
+                  </button>
+                  {gear && (
+                    <div className="absolute right-0 top-12 z-20 w-56 rounded-2xl bg-card border border-ink/10 shadow-xl p-3 rise">
+                      <p className="text-[11px] font-bold tracking-widest uppercase text-ink/45 px-1 mb-2">Показывать</p>
+                      {([['count', 'Число задач'], ['percent', 'Проценты']] as const).map(([k, l]) => (
+                        <button key={k} onClick={() => { setMode(k); setGear(false) }} className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold ${mode === k ? 'bg-sand' : ''}`}>
+                          {l}{mode === k && <I d={P.check} className="w-4 h-4" sw={2.6} />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <section className="mt-4 rounded-[28px] bg-moss border border-ink/10 text-ink p-6 flex items-center gap-6">
+                <Ring value={rate} size={116} stroke={12}>
+                  {mode === 'count'
+                    ? <><span className="font-serif text-3xl leading-none">{doneN}</span><span className="text-xs text-ink/55 mt-1">из {total}</span></>
+                    : <span className="font-serif text-3xl">{rate}%</span>}
+                </Ring>
+                <div>
+                  <p className="text-ink/65 text-sm">{mode === 'count' ? 'Выполнено задач' : 'Процент выполнения'}</p>
+                  <p className="font-serif text-xl leading-snug mt-1">{rate >= 70 ? 'Отличный темп!' : 'Есть куда расти'}</p>
+                </div>
               </section>
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <div className="bg-card border border-ink/5 rounded-3xl p-5"><p className="text-xs text-ink/50 font-semibold">Всего задач</p><p className="font-serif text-4xl mt-2">{total}</p></div>
-                <div className="bg-card border border-ink/5 rounded-3xl p-5"><p className="text-xs text-ink/50 font-semibold">Выполнено</p><p className="font-serif text-4xl mt-2 text-ink">{doneN}</p></div>
+                <div className="bg-card border border-ink/5 rounded-3xl p-5">
+                  <p className="text-xs text-ink/50 font-semibold">Выполнено</p>
+                  <p className="font-serif text-4xl mt-2">{mode === 'count' ? doneN : `${rate}%`}</p>
+                </div>
               </div>
               <section className="bg-card border border-ink/5 rounded-3xl p-5 mt-3">
                 <p className="text-sm font-bold mb-4">Последние 6 дней</p>
                 <div className="flex items-end justify-between h-36 gap-2">
-                  {[...all].slice(0, 6).reverse().map((d) => {
-                    const p = pct(d.tasks)
-                    return (
-                      <div key={d.date} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-                        <span className="text-[10px] font-bold text-ink/50">{p}</span>
-                        <div className={`w-full rounded-t-xl ${d.date === 'today' ? 'bg-clay' : 'bg-moss'}`} style={{ height: `${Math.max(p, 4)}%`, transition: 'height .5s' }} />
-                        <span className="text-[10px] text-ink/45">{d.date === 'today' ? 'Сег' : d.date.slice(8)}</span>
-                      </div>
-                    )
-                  })}
+                  {(() => {
+                    const days = [...all].slice(0, 6).reverse()
+                    const cnt = (d: Day) => d.tasks.filter((t) => t.done).length
+                    const max = Math.max(1, ...days.map(cnt))
+                    return days.map((d) => {
+                      const p = pct(d.tasks), v = mode === 'count' ? cnt(d) : p
+                      const h = mode === 'count' ? (cnt(d) / max) * 100 : p
+                      return (
+                        <div key={d.date} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+                          <span className="text-[10px] font-bold text-ink/60">{mode === 'count' ? v : `${v}%`}</span>
+                          <div className={`w-full rounded-t-xl ${d.date === 'today' ? 'bg-ink' : 'bg-ink/25'}`} style={{ height: `${Math.max(h, 4)}%`, transition: 'height .5s' }} />
+                          <span className="text-[10px] text-ink/45">{d.date === 'today' ? 'Сег' : d.date.slice(8)}</span>
+                        </div>
+                      )
+                    })
+                  })()}
                 </div>
               </section>
             </>
@@ -223,11 +278,11 @@ export default function App() {
             <>
               <h1 className="font-serif text-[34px] leading-tight">Ачивки</h1>
               <p className="text-sm text-ink/55 mt-1">Открыто {got} из {awards.length}</p>
-              <div className="h-2 bg-sand rounded-full mt-3 overflow-hidden"><div className="h-full bg-clay rounded-full transition-all" style={{ width: `${(got / awards.length) * 100}%` }} /></div>
+              <div className="h-2 bg-sand rounded-full mt-3 overflow-hidden"><div className="h-full bg-ink rounded-full transition-all" style={{ width: `${(got / awards.length) * 100}%` }} /></div>
               <div className="grid grid-cols-2 gap-3 mt-5">
                 {awards.map((a) => (
                   <div key={a.t} className={`rounded-3xl p-4 ${a.ok ? 'bg-card' : 'bg-sand/60'}`}>
-                    <div className={`w-14 h-14 rounded-full grid place-items-center font-serif text-lg ${a.ok ? 'bg-clay text-ink shadow-[0_6px_14px_-4px_rgba(255,170,70,.8)]' : 'bg-ink/10 text-ink/30'}`}>{a.g}</div>
+                    <div className={`w-14 h-14 rounded-full grid place-items-center font-serif text-lg ${a.ok ? 'bg-moss border border-ink/15 text-ink shadow-[0_6px_14px_-4px_rgba(43,33,22,.25)]' : 'bg-ink/10 text-ink/30'}`}>{a.g}</div>
                     <p className={`font-bold mt-3 text-[15px] ${a.ok ? '' : 'text-ink/45'}`}>{a.t}</p>
                     <p className="text-xs text-ink/50 mt-0.5 leading-snug">{a.d}</p>
                   </div>
