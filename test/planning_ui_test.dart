@@ -17,6 +17,7 @@ class SelectedBackup extends BackupFiles {
   TaskBackup? selection;
   bool invalid = false;
   List<Task>? exported;
+
   @override
   Future<TaskBackup?> pick() async {
     if (invalid) throw const FormatException('Некорректная копия');
@@ -80,21 +81,20 @@ void main() {
   }
 
   testWidgets(
-    'Editor retains title, category and date after failed save and retries',
+    'Editor retains title and legacy data after failed save and retries',
     (tester) async {
       await planner.save(
-        const Task(id: 'a', title: 'Исходная задача', day: '2026-12-31'),
+        const Task(
+          id: 'a',
+          title: 'Исходная задача',
+          day: '2026-12-31',
+          category: 'Работа',
+        ),
       );
       await open(tester);
       await tapVisible(tester, find.text('Исходная задача'));
       await tester.enterText(find.byType(TextFormField), 'Исправленный текст');
-      await tapVisible(
-        tester,
-        find.descendant(
-          of: find.byType(TaskEditor),
-          matching: find.widgetWithText(ChoiceChip, 'Работа'),
-        ),
-      );
+      expect(find.byType(ChoiceChip), findsNothing);
       repository.fail = true;
       await tapVisible(tester, find.text('Сохранить изменения'));
       expect(find.byType(TaskEditor), findsOneWidget);
@@ -104,17 +104,6 @@ void main() {
             .controller!
             .text,
         'Исправленный текст',
-      );
-      expect(
-        tester
-            .widget<ChoiceChip>(
-              find.descendant(
-                of: find.byType(TaskEditor),
-                matching: find.widgetWithText(ChoiceChip, 'Работа'),
-              ),
-            )
-            .selected,
-        true,
       );
       expect(find.textContaining('Текст сохранён в форме'), findsOneWidget);
       expect(planner.tasks.single.title, 'Исходная задача');
@@ -129,7 +118,7 @@ void main() {
   );
 
   testWidgets(
-    'Category filter, tomorrow move, undo and future overview are usable',
+    'Tasks without categories, tomorrow move, undo and future overview are usable',
     (tester) async {
       await planner.save(
         const Task(
@@ -143,12 +132,20 @@ void main() {
         const Task(id: 'b', title: 'Личная задача', day: '2026-12-31'),
       );
       await open(tester);
-      await tapVisible(tester, find.byTooltip('Категория задач'));
-      await tester.tap(find.text('Работа').last);
-      await tester.pumpAndSettle();
-      await reveal(tester, find.widgetWithText(TaskCard, 'Рабочая задача'));
+      expect(find.byTooltip('Категория задач'), findsNothing);
+      expect(find.text('Работа'), findsNothing);
+      await reveal(tester, find.widgetWithText(TaskCard, 'Личная задача'));
       expect(find.widgetWithText(TaskCard, 'Рабочая задача'), findsOneWidget);
-      expect(find.widgetWithText(TaskCard, 'Личная задача'), findsNothing);
+      expect(find.widgetWithText(TaskCard, 'Личная задача'), findsOneWidget);
+      await reveal(tester, find.byKey(const ValueKey('move-unfinished')));
+      expect(
+        tester.getTopLeft(find.byKey(const ValueKey('move-unfinished'))).dy,
+        greaterThan(
+          tester
+              .getBottomLeft(find.widgetWithText(TaskCard, 'Личная задача'))
+              .dy,
+        ),
+      );
       await tapVisible(tester, find.byKey(const ValueKey('move-unfinished')));
       expect(planner.tasks.every((t) => t.day == '2027-01-01'), true);
       await tapVisible(tester, find.text('Отменить'));

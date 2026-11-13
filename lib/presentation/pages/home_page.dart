@@ -9,19 +9,25 @@ import '../controllers/reminder_controller.dart';
 import '../theme/palette.dart';
 import '../widgets/design_icon.dart';
 import '../widgets/progress_ring.dart';
-import '../widgets/reminder_card.dart';
+import '../controllers/theme_controller.dart';
+import 'settings_page.dart';
 import '../widgets/task_card.dart';
 import '../widgets/task_editor.dart';
 import 'insights_views.dart';
 import 'backup_page.dart';
 import 'plans_page.dart';
-import '../../domain/entities/task_validation.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.planner, required this.reminder});
+  const HomePage({
+    super.key,
+    required this.planner,
+    required this.reminder,
+    required this.appearance,
+  });
 
   final PlannerController planner;
   final ReminderController reminder;
+  final ThemeController appearance;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -30,7 +36,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int page = 0;
   int filter = 0;
-  String? category;
   StatisticsMode statisticsMode = StatisticsMode.count;
   final draft = TextEditingController();
   final draftFocus = FocusNode();
@@ -100,7 +105,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       title: title,
       day: dayKey(planner.selected),
-      category: category ?? taskCategories.first,
     );
     if (await attempt(() => planner.save(task)) && mounted) {
       if (draft.text.trim() == title && task.day == dayKey(planner.selected)) {
@@ -133,7 +137,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: paper,
+      backgroundColor: AppPalette.of(context).paper,
       showDragHandle: true,
       constraints: const BoxConstraints(maxWidth: 560),
       builder: (_) => TaskEditor(
@@ -220,7 +224,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     setState(() {
       page = 0;
       filter = 0;
-      category = null;
       draftError = null;
     });
     if (scroll.hasClients) scroll.jumpTo(0);
@@ -236,7 +239,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final value = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
-      backgroundColor: paper,
+      backgroundColor: AppPalette.of(context).paper,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
@@ -253,7 +256,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               ListTile(
                 key: const ValueKey('today'),
                 selected: planner.selected == planner.today,
-                selectedTileColor: sand,
+                selectedTileColor: AppPalette.of(context).sand,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -270,7 +273,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               ListTile(
                 key: const ValueKey('tomorrow'),
                 selected: planner.selected == nextDay(planner.today),
-                selectedTileColor: sand,
+                selectedTileColor: AppPalette.of(context).sand,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -312,7 +315,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: planner,
     builder: (context, _) => Scaffold(
-      backgroundColor: paper,
+      backgroundColor: AppPalette.of(context).paper,
       bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom == 0
           ? Align(
               heightFactor: 1,
@@ -350,12 +353,22 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         onOpenDay: selectDay,
                         onChooseDate: chooseDate,
                         busy: planner.busy,
+                        onBackups: showBackups,
                       )
                     else if (page == 2)
                       StatisticsView(
                         statistics: planner.statistics,
                         today: planner.today,
                         mode: statisticsMode,
+                        onSettings: () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => SettingsPage(
+                              appearance: widget.appearance,
+                              reminder: widget.reminder,
+                            ),
+                          ),
+                        ),
                         onModeChanged: (value) =>
                             setState(() => statisticsMode = value),
                       )
@@ -384,8 +397,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
           decoration: BoxDecoration(
-            color: card.withValues(alpha: .95),
-            border: Border(top: BorderSide(color: inkOpacity(.05))),
+            color: AppPalette.of(context).card.withValues(alpha: .95),
+            border: Border(
+              top: BorderSide(color: AppPalette.of(context).inkOpacity(.05)),
+            ),
           ),
           child: SafeArea(
             top: false,
@@ -404,13 +419,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           onTap: () => setPage(i),
                           child: Container(
                             padding: EdgeInsets.symmetric(
-                              horizontal: MediaQuery.sizeOf(context).width < 360
-                                  ? 6
-                                  : 12,
+                              horizontal: 4,
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: page == i ? sage : Colors.transparent,
+                              color: page == i
+                                  ? AppPalette.of(context).sage
+                                  : Colors.transparent,
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Column(
@@ -419,17 +434,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 DesignIcon(
                                   symbols[i],
                                   size: 22,
-                                  color: page == i ? ink : inkOpacity(.4),
+                                  color: page == i
+                                      ? AppPalette.of(context).ink
+                                      : AppPalette.of(context).inkOpacity(.4),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   labels[i],
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 10,
                                     height: 1.5,
                                     fontWeight: FontWeight.w600,
-                                    color: page == i ? ink : inkOpacity(.4),
+                                    color: page == i
+                                        ? AppPalette.of(context).ink
+                                        : AppPalette.of(context).inkOpacity(.4),
                                   ),
                                 ),
                               ],
@@ -452,11 +471,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final done = tasks.where((t) => t.done).length;
     final percent = tasks.isEmpty ? 0 : (done / tasks.length * 100).round();
     final visible = tasks
-        .where(
-          (t) =>
-              (category == null || t.category == category) &&
-              (filter == 0 || (filter == 1 ? !t.done : t.done)),
-        )
+        .where((t) => (filter == 0 || (filter == 1 ? !t.done : t.done)))
         .toList();
     final dateText = DateFormat('EEEE, d MMMM', 'ru').format(planner.selected);
     final isToday = planner.selected == planner.today;
@@ -485,7 +500,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ),
         ),
       Material(
-        color: sand.withValues(alpha: .65),
+        color: AppPalette.of(context).sand.withValues(alpha: .65),
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
           key: const ValueKey('day-selector'),
@@ -520,7 +535,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           '${dateText[0].toUpperCase()}${dateText.substring(1)}',
                           style: TextStyle(
                             fontSize: 12,
-                            color: inkOpacity(.55),
+                            color: AppPalette.of(context).inkOpacity(.55),
                           ),
                         ),
                       ],
@@ -546,83 +561,30 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             onPressed: showPlans,
             icon: const Icon(Icons.event_note),
           ),
-          IconButton(
-            tooltip: 'Копии задач',
-            onPressed: showBackups,
-            icon: const Icon(Icons.folder_copy_outlined),
-          ),
         ],
       ),
-      const SizedBox(height: 20),
+      const SizedBox(height: 8),
       Container(
-        clipBehavior: Clip.antiAlias,
+        key: const ValueKey('day-progress'),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: cream,
-          border: Border.all(color: inkOpacity(.1)),
-          borderRadius: BorderRadius.circular(28),
+          color: AppPalette.of(context).cream,
+          borderRadius: BorderRadius.circular(16),
         ),
-        child: Stack(
+        child: Row(
           children: [
-            Positioned(
-              right: -40,
-              top: -40,
-              child: Container(
-                width: 160,
-                height: 160,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: paper.withValues(alpha: .3),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  ProgressRing(percent: percent),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Выполнено', style: captionStyle(.65)),
-                        Text(
-                          '$done из ${tasks.length}',
-                          style: const TextStyle(fontSize: 30, height: 1.2),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const DesignIcon(
-                              DesignSymbol.flame,
-                              size: 16,
-                              filled: true,
-                              stroke: 1,
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                'Серия: ${planner.statistics.streak} дн.',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  height: 20 / 14,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+            ProgressRing(percent: percent, size: 44, stroke: 4, fontSize: 11),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Выполнено $done из ${tasks.length}',
+                style: const TextStyle(fontSize: 14),
               ),
             ),
           ],
         ),
       ),
-      const SizedBox(height: 16),
-      ReminderCard(controller: widget.reminder),
-      const SizedBox(height: 28),
+      const SizedBox(height: 12),
       Row(
         children: [
           Expanded(
@@ -651,60 +613,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: inkOpacity(.7),
+                      color: AppPalette.of(context).inkOpacity(.7),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: PopupMenuButton<String>(
-              tooltip: 'Категория задач',
-              initialValue: category ?? '',
-              onSelected: (value) =>
-                  setState(() => category = value.isEmpty ? null : value),
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: '', child: Text('Все категории')),
-                for (final value in {
-                  ...taskCategories,
-                  ...tasks.map((t) => t.category),
-                })
-                  PopupMenuItem(value: value, child: Text(value)),
-              ],
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 48),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        category ?? 'Все категории',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                    const Icon(Icons.expand_more, size: 20),
-                  ],
-                ),
-              ),
-            ),
-          ),
         ],
       ),
-      if (!planner.selected.isAfter(planner.today))
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            key: const ValueKey('move-unfinished'),
-            onPressed: planner.busy || !tasks.any((t) => !t.done)
-                ? null
-                : moveUnfinished,
-            icon: const Icon(Icons.forward),
-            label: Text(
-              'Все незавершённые на завтра (${tasks.where((t) => !t.done).length})',
-            ),
-          ),
-        ),
       const SizedBox(height: 12),
       if (visible.isEmpty)
         Padding(
@@ -714,7 +631,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 ? 'Пока пусто. Запланируй свой день.'
                 : 'В этом фильтре пока нет задач.',
             textAlign: TextAlign.center,
-            style: captionStyle(.45),
+            style: captionStyle(context, .45),
           ),
         ),
       for (var i = 0; i < visible.length; i++) ...[
@@ -735,7 +652,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       TextFieldTapRegion(
         key: const ValueKey('quick-entry'),
         child: CustomPaint(
-          painter: _DashedBorder(focused: draftFocus.hasFocus),
+          painter: _DashedBorder(
+            focused: draftFocus.hasFocus,
+            color: draftFocus.hasFocus
+                ? AppPalette.of(context).cream
+                : AppPalette.of(context).inkOpacity(.2),
+          ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(18, 8, 8, 8),
             child: Row(
@@ -760,7 +682,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     decoration: InputDecoration(
                       hintText: 'Новая задача…',
                       counterText: '',
-                      hintStyle: TextStyle(color: inkOpacity(.45)),
+                      hintStyle: TextStyle(
+                        color: AppPalette.of(context).inkOpacity(.45),
+                      ),
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(vertical: 8),
                       border: InputBorder.none,
@@ -783,12 +707,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         height: 48,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: ink,
+                          color: AppPalette.of(context).ink,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const DesignIcon(
+                        child: DesignIcon(
                           DesignSymbol.plus,
-                          color: cream,
+                          color: AppPalette.of(context).cream,
                         ),
                       ),
                     ),
@@ -810,11 +734,30 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ),
           ),
         ),
+      const SizedBox(height: 12),
+      if (!planner.selected.isAfter(planner.today))
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            key: const ValueKey('move-unfinished'),
+            onPressed: planner.busy || !tasks.any((t) => !t.done)
+                ? null
+                : moveUnfinished,
+            icon: const Icon(Icons.forward),
+            label: Text(
+              'Все незавершённые на завтра (${tasks.where((t) => !t.done).length})',
+            ),
+          ),
+        ),
       const SizedBox(height: 24),
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          DesignIcon(DesignSymbol.moon, size: 16, color: inkOpacity(.45)),
+          DesignIcon(
+            DesignSymbol.moon,
+            size: 16,
+            color: AppPalette.of(context).inkOpacity(.45),
+          ),
           const SizedBox(width: 8),
           Flexible(
             child: Text(
@@ -824,7 +767,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               style: TextStyle(
                 fontSize: 12,
                 height: 16 / 12,
-                color: inkOpacity(.45),
+                color: AppPalette.of(context).inkOpacity(.45),
               ),
             ),
           ),
@@ -835,7 +778,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 }
 
 class _DashedBorder extends CustomPainter {
-  const _DashedBorder({required this.focused});
+  const _DashedBorder({required this.focused, required this.color});
+
+  final Color color;
 
   final bool focused;
 
@@ -851,7 +796,7 @@ class _DashedBorder extends CustomPainter {
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
-      ..color = focused ? cream : inkOpacity(.2);
+      ..color = color;
     for (final metric in path.computeMetrics()) {
       for (double start = 0; start < metric.length; start += 10) {
         canvas.drawPath(metric.extractPath(start, start + 5), paint);
@@ -860,5 +805,6 @@ class _DashedBorder extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_DashedBorder old) => old.focused != focused;
+  bool shouldRepaint(_DashedBorder old) =>
+      old.focused != focused || old.color != color;
 }

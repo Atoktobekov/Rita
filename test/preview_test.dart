@@ -12,6 +12,7 @@ import 'package:daily_todo/domain/usecases/manage_reminder.dart';
 import 'package:daily_todo/presentation/controllers/planner_controller.dart';
 import 'package:daily_todo/presentation/controllers/reminder_controller.dart';
 import 'support/fakes.dart';
+import 'package:daily_todo/presentation/controllers/theme_controller.dart';
 import 'support/figma_fixture.dart';
 
 void main() {
@@ -40,6 +41,7 @@ void main() {
       );
       await planner.initialize();
       await reminder.initialize();
+      final appearance = ThemeController();
       final key = GlobalKey();
       tester.view.physicalSize = const Size(370, 780);
       tester.view.devicePixelRatio = 1;
@@ -50,7 +52,7 @@ void main() {
       await tester.pumpWidget(
         RepaintBoundary(
           key: key,
-          child: DailyApp(planner: planner, reminder: reminder),
+          child: DailyApp(planner: planner, reminder: reminder, appearance: appearance),
         ),
       );
       await tester.pumpAndSettle();
@@ -102,7 +104,24 @@ void main() {
       await tester.tap(find.text('Сегодня'));
       await tester.pumpAndSettle();
       await capture('figma-day-narrow');
+      await appearance.update(ThemeMode.dark);
+      await tester.pumpAndSettle();
+      await capture('dark-day-narrow');
+      for (final (tab, name) in [('Архив', 'dark-archive'), ('Статистика', 'dark-statistics'), ('Ачивки', 'dark-awards')]) {
+        await tester.tap(find.text(tab).last);
+        await tester.pumpAndSettle();
+        await capture(name);
+      }
+      await tester.tap(find.text('Статистика').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Настройки'));
+      await tester.pumpAndSettle();
+      await capture('dark-settings');
+      await tester.tap(find.text('Вечернее напоминание'));
+      await tester.pumpAndSettle();
+      await capture('dark-reminder');
       await tester.pumpWidget(const SizedBox());
+      appearance.dispose();
       planner.dispose();
       reminder.dispose();
     },

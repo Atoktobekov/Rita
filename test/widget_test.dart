@@ -251,7 +251,7 @@ void main() {
   });
 
   testWidgets(
-    'Midnight, editable archive, four tabs and inline reminder on narrow screens',
+    'Midnight, editable archive, four tabs and reminder in settings on narrow screens',
     (tester) async {
       await planner.save(
         Task(id: 'past', title: 'Последнее дело года', day: dayKey(now)),
@@ -277,7 +277,14 @@ void main() {
       expect(find.text('Открыто 0 из 11'), findsOneWidget);
       await tester.tap(find.text('Сегодня').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('reminder-switch')));
+      expect(find.byKey(const ValueKey('reminder-switch')), findsNothing);
+      await tester.tap(find.text('Статистика'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Настройки'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Вечернее напоминание'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Switch).first);
       await tester.pumpAndSettle();
       expect(reminder.settings.enabled, true);
       expect(tester.takeException(), isNull);

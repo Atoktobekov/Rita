@@ -48,8 +48,8 @@ class ReminderCard extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 48),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: card,
-            border: Border.all(color: inkOpacity(.05)),
+            color: AppPalette.of(context).card,
+            border: Border.all(color: AppPalette.of(context).inkOpacity(.05)),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -94,7 +94,7 @@ class ReminderCard extends StatelessWidget {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: sand.withValues(alpha: .7),
+                  color: AppPalette.of(context).sand.withValues(alpha: .7),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(
@@ -112,8 +112,8 @@ class ReminderCard extends StatelessWidget {
                         child: Container(
                           width: 48,
                           height: 48,
-                          decoration: const BoxDecoration(
-                            color: card,
+                          decoration: BoxDecoration(
+                            color: AppPalette.of(context).card,
                             shape: BoxShape.circle,
                           ),
                           child: const Center(
@@ -144,7 +144,7 @@ class ReminderCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12,
                               height: 16 / 12,
-                              color: inkOpacity(.55),
+                              color: AppPalette.of(context).inkOpacity(.55),
                             ),
                           ),
                           if (compact && settings.enabled) ...[

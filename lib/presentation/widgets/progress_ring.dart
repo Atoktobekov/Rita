@@ -24,7 +24,11 @@ class ProgressRing extends StatelessWidget {
     child: SizedBox.square(
       dimension: size,
       child: CustomPaint(
-        painter: _RingPainter(percent / 100, stroke),
+        painter: _RingPainter(
+          percent / 100,
+          stroke,
+          AppPalette.of(context).ink,
+        ),
         child: Center(
           child:
               child ??
@@ -39,8 +43,9 @@ class ProgressRing extends StatelessWidget {
 }
 
 class _RingPainter extends CustomPainter {
-  const _RingPainter(this.value, this.stroke);
+  const _RingPainter(this.value, this.stroke, this.color);
 
+  final Color color;
   final double value;
   final double stroke;
 
@@ -50,7 +55,7 @@ class _RingPainter extends CustomPainter {
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke;
-    canvas.drawOval(rect, paint..color = inkOpacity(.12));
+    canvas.drawOval(rect, paint..color = color.withValues(alpha: .12));
     if (value > 0) {
       canvas.drawArc(
         rect,
@@ -58,7 +63,7 @@ class _RingPainter extends CustomPainter {
         math.pi * 2 * value,
         false,
         paint
-          ..color = ink
+          ..color = color
           ..strokeCap = StrokeCap.round,
       );
     }
@@ -66,5 +71,5 @@ class _RingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_RingPainter old) =>
-      value != old.value || stroke != old.stroke;
+      value != old.value || stroke != old.stroke || color != old.color;
 }

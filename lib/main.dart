@@ -9,6 +9,8 @@ import 'domain/usecases/manage_tasks.dart';
 import 'presentation/controllers/planner_controller.dart';
 import 'presentation/controllers/reminder_controller.dart';
 
+import 'presentation/controllers/theme_controller.dart';
+
 export 'app.dart';
 
 Future<void> main() async {
@@ -31,7 +33,17 @@ Future<void> main() async {
     );
     await planner.initialize();
     await reminder.initialize();
-    runApp(DailyApp(planner: planner, reminder: reminder));
+    final savedTheme = settings.get('theme_mode');
+    final appearance = ThemeController(
+      mode: ThemeMode.values.firstWhere(
+        (mode) => mode.name == savedTheme,
+        orElse: () => ThemeMode.system,
+      ),
+      save: (mode) => settings.put('theme_mode', mode.name),
+    );
+    runApp(
+      DailyApp(planner: planner, reminder: reminder, appearance: appearance),
+    );
   } catch (_) {
     runApp(
       MaterialApp(

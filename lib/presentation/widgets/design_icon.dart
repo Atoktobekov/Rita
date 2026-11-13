@@ -45,14 +45,14 @@ class DesignIcon extends StatelessWidget {
     this.symbol, {
     super.key,
     this.size = 24,
-    this.color = ink,
+    this.color,
     this.filled = false,
     this.stroke = 1.8,
   });
 
   final DesignSymbol symbol;
   final double size;
-  final Color color;
+  final Color? color;
   final bool filled;
   final double stroke;
 
@@ -61,6 +61,9 @@ class DesignIcon extends StatelessWidget {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="$stroke" stroke-linecap="round" stroke-linejoin="round"><path d="${_paths[symbol]}"/></svg>',
     width: size,
     height: size,
-    colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+    colorFilter: ColorFilter.mode(
+      color ?? AppPalette.of(context).ink,
+      BlendMode.srcIn,
+    ),
   );
 }

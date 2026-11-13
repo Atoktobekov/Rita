@@ -14,15 +14,22 @@ const pageHeading = TextStyle(
   fontWeight: FontWeight.w400,
 );
 
-TextStyle captionStyle([double opacity = .55]) =>
-    TextStyle(fontSize: 14, height: 20 / 14, color: inkOpacity(opacity));
-
-BoxDecoration softCard({double radius = 24, Color color = card}) =>
-    BoxDecoration(
-      color: color,
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: inkOpacity(.05)),
+TextStyle captionStyle(BuildContext context, [double opacity = .55]) =>
+    TextStyle(
+      fontSize: 14,
+      height: 20 / 14,
+      color: AppPalette.of(context).inkOpacity(opacity),
     );
+
+BoxDecoration softCard(
+  BuildContext context, {
+  double radius = 24,
+  Color? color,
+}) => BoxDecoration(
+  color: color ?? AppPalette.of(context).card,
+  borderRadius: BorderRadius.circular(radius),
+  border: Border.all(color: AppPalette.of(context).inkOpacity(.05)),
+);
 
 class ArchiveView extends StatefulWidget {
   const ArchiveView({
@@ -35,9 +42,11 @@ class ArchiveView extends StatefulWidget {
     required this.onOpenDay,
     required this.onChooseDate,
     this.busy = false,
+    this.onBackups,
   });
 
   final bool busy;
+  final VoidCallback? onBackups;
   final List<String> days;
   final List<Task> tasks;
   final DateTime today;
@@ -57,16 +66,25 @@ class _ArchiveViewState extends State<ArchiveView> {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text('Архив', style: pageHeading),
+      Row(
+        children: [
+          const Expanded(child: Text('Архив', style: pageHeading)),
+          IconButton(
+            tooltip: 'Копии задач',
+            onPressed: widget.onBackups,
+            icon: const Icon(Icons.folder_copy_outlined),
+          ),
+        ],
+      ),
       const SizedBox(height: 4),
-      Text('Прошедшие дни можно редактировать', style: captionStyle()),
+      Text('Прошедшие дни можно редактировать', style: captionStyle(context)),
       const SizedBox(height: 20),
       if (widget.days.isEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 32),
           child: Text(
             'Здесь появится история твоих дней.',
-            style: captionStyle(.45),
+            style: captionStyle(context, .45),
           ),
         ),
       for (final day in widget.days) ...[
@@ -84,7 +102,7 @@ class _ArchiveViewState extends State<ArchiveView> {
               widget.today.day - 1,
             );
             return Container(
-              decoration: softCard(),
+              decoration: softCard(context),
               clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
@@ -102,8 +120,8 @@ class _ArchiveViewState extends State<ArchiveView> {
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: Color.lerp(
-                                cream,
-                                ink,
+                                AppPalette.of(context).cream,
+                                AppPalette.of(context).ink,
                                 (percent * .85).round() / 100,
                               ),
                               borderRadius: BorderRadius.circular(16),
@@ -113,7 +131,9 @@ class _ArchiveViewState extends State<ArchiveView> {
                               style: TextStyle(
                                 fontSize: 18,
                                 height: 1.55,
-                                color: percent > 45 ? cream : ink,
+                                color: percent > 45
+                                    ? AppPalette.of(context).cream
+                                    : AppPalette.of(context).ink,
                               ),
                             ),
                           ),
@@ -142,7 +162,9 @@ class _ArchiveViewState extends State<ArchiveView> {
                                   style: TextStyle(
                                     fontSize: 12,
                                     height: 16 / 12,
-                                    color: inkOpacity(.5),
+                                    color: AppPalette.of(
+                                      context,
+                                    ).inkOpacity(.5),
                                   ),
                                 ),
                               ],
@@ -154,7 +176,7 @@ class _ArchiveViewState extends State<ArchiveView> {
                             child: DesignIcon(
                               DesignSymbol.chevron,
                               size: 20,
-                              color: inkOpacity(.3),
+                              color: AppPalette.of(context).inkOpacity(.3),
                             ),
                           ),
                         ],
@@ -201,18 +223,15 @@ class _ArchiveViewState extends State<ArchiveView> {
                                                 fontSize: 14,
                                                 height: 20 / 14,
                                                 color: task.done
-                                                    ? inkOpacity(.65)
-                                                    : ink,
+                                                    ? AppPalette.of(
+                                                        context,
+                                                      ).inkOpacity(.65)
+                                                    : AppPalette.of(
+                                                        context,
+                                                      ).ink,
                                                 decoration: task.done
                                                     ? TextDecoration.lineThrough
                                                     : null,
-                                              ),
-                                            ),
-                                            Text(
-                                              task.category,
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: inkOpacity(.7),
                                               ),
                                             ),
                                           ],
@@ -258,8 +277,10 @@ class StatisticsView extends StatelessWidget {
     required this.today,
     required this.mode,
     required this.onModeChanged,
+    this.onSettings,
   });
 
+  final VoidCallback? onSettings;
   final TaskStatistics statistics;
   final DateTime today;
   final StatisticsMode mode;
@@ -281,13 +302,18 @@ class StatisticsView extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(child: Text('Статистика', style: pageHeading)),
+            Expanded(child: Text('Статистика', style: pageHeading.copyWith(fontSize: 28))),
+            IconButton(
+              tooltip: 'Настройки',
+              onPressed: onSettings,
+              icon: const Icon(Icons.settings_outlined),
+            ),
             PopupMenuButton<StatisticsMode>(
               tooltip: 'Настройки статистики',
               position: PopupMenuPosition.under,
               offset: const Offset(0, 4),
               onSelected: onModeChanged,
-              color: card,
+              color: AppPalette.of(context).card,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -295,13 +321,13 @@ class StatisticsView extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: card,
+                  color: AppPalette.of(context).card,
                   shape: BoxShape.circle,
-                  border: Border.all(color: inkOpacity(.1)),
+                  border: Border.all(
+                    color: AppPalette.of(context).inkOpacity(.1),
+                  ),
                 ),
-                child: const Center(
-                  child: DesignIcon(DesignSymbol.settings, size: 20),
-                ),
+                child: const Center(child: Icon(Icons.bar_chart, size: 20)),
               ),
               itemBuilder: (_) => [
                 const PopupMenuItem<StatisticsMode>(
@@ -325,7 +351,9 @@ class StatisticsView extends StatelessWidget {
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: mode == value ? sand : Colors.transparent,
+                          color: mode == value
+                              ? AppPalette.of(context).sand
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -350,8 +378,8 @@ class StatisticsView extends StatelessWidget {
         Container(
           padding: EdgeInsets.all(compact ? 16 : 24),
           decoration: BoxDecoration(
-            color: cream,
-            border: Border.all(color: inkOpacity(.1)),
+            color: AppPalette.of(context).cream,
+            border: Border.all(color: AppPalette.of(context).inkOpacity(.1)),
             borderRadius: BorderRadius.circular(28),
           ),
           child: Row(
@@ -374,7 +402,7 @@ class StatisticsView extends StatelessWidget {
                             'из ${stats.total}',
                             style: TextStyle(
                               fontSize: 12,
-                              color: inkOpacity(.55),
+                              color: AppPalette.of(context).inkOpacity(.55),
                             ),
                           ),
                         ],
@@ -388,7 +416,7 @@ class StatisticsView extends StatelessWidget {
                   children: [
                     Text(
                       showCount ? 'Выполнено задач' : 'Процент выполнения',
-                      style: captionStyle(.65),
+                      style: captionStyle(context, .65),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -411,7 +439,7 @@ class StatisticsView extends StatelessWidget {
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(20),
-                  decoration: softCard(),
+                  decoration: softCard(context),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -421,7 +449,7 @@ class StatisticsView extends StatelessWidget {
                           fontSize: 12,
                           height: 16 / 12,
                           fontWeight: FontWeight.w600,
-                          color: inkOpacity(.5),
+                          color: AppPalette.of(context).inkOpacity(.5),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -443,7 +471,7 @@ class StatisticsView extends StatelessWidget {
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(20),
-          decoration: softCard(),
+          decoration: softCard(context),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -479,7 +507,7 @@ class StatisticsView extends StatelessWidget {
                                   fontSize: 10,
                                   height: 1.5,
                                   fontWeight: FontWeight.w700,
-                                  color: inkOpacity(.6),
+                                  color: AppPalette.of(context).inkOpacity(.6),
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -494,8 +522,8 @@ class StatisticsView extends StatelessWidget {
                                         .clamp(.04, 1.0),
                                 decoration: BoxDecoration(
                                   color: dayKey(day.day) == dayKey(today)
-                                      ? ink
-                                      : inkOpacity(.25),
+                                      ? AppPalette.of(context).ink
+                                      : AppPalette.of(context).inkOpacity(.25),
                                   borderRadius: const BorderRadius.vertical(
                                     top: Radius.circular(12),
                                   ),
@@ -509,7 +537,7 @@ class StatisticsView extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 10,
                                   height: 1.5,
-                                  color: inkOpacity(.45),
+                                  color: AppPalette.of(context).inkOpacity(.45),
                                 ),
                               ),
                             ],
@@ -541,15 +569,15 @@ class AwardsView extends StatelessWidget {
       children: [
         const Text('Ачивки', style: pageHeading),
         const SizedBox(height: 4),
-        Text('Открыто $got из ${awards.length}', style: captionStyle()),
+        Text('Открыто $got из ${awards.length}', style: captionStyle(context)),
         const SizedBox(height: 12),
         ClipRRect(
           borderRadius: BorderRadius.circular(99),
           child: LinearProgressIndicator(
             value: awards.isEmpty ? 0 : got / awards.length,
             minHeight: 8,
-            color: ink,
-            backgroundColor: sand,
+            color: AppPalette.of(context).ink,
+            backgroundColor: AppPalette.of(context).sand,
           ),
         ),
         const SizedBox(height: 20),
@@ -584,7 +612,9 @@ class _AwardCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: award.unlocked ? card : sand.withValues(alpha: .6),
+      color: award.unlocked
+          ? AppPalette.of(context).card
+          : AppPalette.of(context).sand.withValues(alpha: .6),
       borderRadius: BorderRadius.circular(24),
     ),
     child: Column(
@@ -596,8 +626,12 @@ class _AwardCard extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: award.unlocked ? cream : inkOpacity(.1),
-            border: award.unlocked ? Border.all(color: inkOpacity(.15)) : null,
+            color: award.unlocked
+                ? AppPalette.of(context).cream
+                : AppPalette.of(context).inkOpacity(.1),
+            border: award.unlocked
+                ? Border.all(color: AppPalette.of(context).inkOpacity(.15))
+                : null,
             boxShadow: award.unlocked
                 ? const [
                     BoxShadow(
@@ -614,7 +648,9 @@ class _AwardCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               height: 1.55,
-              color: award.unlocked ? ink : inkOpacity(.3),
+              color: award.unlocked
+                  ? AppPalette.of(context).ink
+                  : AppPalette.of(context).inkOpacity(.3),
             ),
           ),
         ),
@@ -625,13 +661,19 @@ class _AwardCard extends StatelessWidget {
             fontSize: 15,
             height: 1.5,
             fontWeight: FontWeight.w700,
-            color: award.unlocked ? ink : inkOpacity(.45),
+            color: award.unlocked
+                ? AppPalette.of(context).ink
+                : AppPalette.of(context).inkOpacity(.45),
           ),
         ),
         const SizedBox(height: 2),
         Text(
           award.description,
-          style: TextStyle(fontSize: 12, height: 1.375, color: inkOpacity(.5)),
+          style: TextStyle(
+            fontSize: 12,
+            height: 1.375,
+            color: AppPalette.of(context).inkOpacity(.5),
+          ),
         ),
       ],
     ),

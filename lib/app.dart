@@ -4,78 +4,89 @@ import 'presentation/controllers/planner_controller.dart';
 import 'presentation/controllers/reminder_controller.dart';
 import 'presentation/pages/home_page.dart';
 import 'presentation/theme/palette.dart';
+import 'presentation/controllers/theme_controller.dart';
 
-
-
-
-class DailyApp extends StatelessWidget {
-  const DailyApp({super.key, required this.planner, required this.reminder});
+class DailyApp extends StatefulWidget {
+  const DailyApp({
+    super.key,
+    required this.planner,
+    required this.reminder,
+    this.appearance,
+  });
 
   final PlannerController planner;
   final ReminderController reminder;
 
+  final ThemeController? appearance;
+
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'Daily To-Do',
-    debugShowCheckedModeBanner: false,
-    locale: const Locale('ru'),
-    supportedLocales: const [Locale('ru')],
-    localizationsDelegates: GlobalMaterialLocalizations.delegates,
-    theme: ThemeData(
+  State<DailyApp> createState() => _DailyAppState();
+}
+
+class _DailyAppState extends State<DailyApp> {
+  late final appearance = widget.appearance ?? ThemeController();
+
+  @override
+  void dispose() {
+    if (widget.appearance == null) appearance.dispose();
+    super.dispose();
+  }
+
+  ThemeData makeTheme(Brightness brightness) {
+    final colors = AppPalette(brightness == Brightness.dark);
+    return ThemeData(
+      brightness: brightness,
       useMaterial3: true,
       fontFamily: 'Google Sans',
-      scaffoldBackgroundColor: Colors.white,
-      colorScheme: ColorScheme.fromSeed(seedColor: cream).copyWith(
-        primary: ink,
-        onPrimary: cream,
-        primaryContainer: cream,
-        onPrimaryContainer: ink,
-        surface: Colors.white,
-        onSurface: ink,
-        secondaryContainer: cream,
-        onSecondaryContainer: ink,
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        foregroundColor: ink,
-        centerTitle: false,
-      ),
-      navigationBarTheme: const NavigationBarThemeData(
-        backgroundColor: Colors.white,
-        indicatorColor: cream,
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: ink,
-          foregroundColor: cream,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+      scaffoldBackgroundColor: colors.paper,
+      colorScheme:
+          ColorScheme.fromSeed(
+            seedColor: const Color(0xFFFFCF94),
+            brightness: brightness,
+          ).copyWith(
+            primary: colors.ink,
+            onPrimary: colors.paper,
+            primaryContainer: colors.cream,
+            onPrimaryContainer: colors.ink,
+            surface: colors.card,
+            onSurface: colors.ink,
+            secondaryContainer: colors.sage,
+            onSecondaryContainer: colors.ink,
           ),
-        ),
-      ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: ink,
-        foregroundColor: cream,
-        elevation: 0,
+      appBarTheme: AppBarTheme(
+        backgroundColor: colors.paper,
+        foregroundColor: colors.ink,
+        surfaceTintColor: Colors.transparent,
       ),
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       ),
-      chipTheme: ChipThemeData(
-        selectedColor: cream,
-        side: const BorderSide(color: Color(0xFFE7E1D9)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      dividerColor: const Color(0xFFE7E1D9),
-      textTheme: const TextTheme(
-        bodyMedium: TextStyle(fontSize: 14, height: 1.5, color: ink),
-        bodyLarge: TextStyle(fontSize: 16, height: 1.5, color: ink),
+      textTheme: TextTheme(
+        bodyMedium: TextStyle(fontSize: 14, height: 1.5, color: colors.ink),
+        bodyLarge: TextStyle(fontSize: 16, height: 1.5, color: colors.ink),
       ),
       splashFactory: NoSplash.splashFactory,
       highlightColor: Colors.transparent,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: appearance,
+    builder: (context, _) => MaterialApp(
+      title: 'Daily To-Do',
+      debugShowCheckedModeBanner: false,
+      locale: const Locale('ru'),
+      supportedLocales: const [Locale('ru')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      theme: makeTheme(Brightness.light),
+      darkTheme: makeTheme(Brightness.dark),
+      themeMode: appearance.mode,
+      home: HomePage(
+        planner: widget.planner,
+        reminder: widget.reminder,
+        appearance: appearance,
+      ),
     ),
-    home: HomePage(planner: planner, reminder: reminder),
   );
 }

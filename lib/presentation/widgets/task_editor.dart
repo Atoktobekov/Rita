@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/calendar.dart';
 import '../../domain/entities/task.dart';
-import '../../domain/entities/task_validation.dart';
-
-const categories = taskCategories;
 
 Future<DateTime?> pickDay(BuildContext context, DateTime current) =>
     showDatePicker(
@@ -22,9 +19,11 @@ class TaskEditor extends StatefulWidget {
     required this.day,
     required this.onSave,
   });
+
   final Future<void> Function(Task) onSave;
   final Task? task;
   final DateTime day;
+
   @override
   State<TaskEditor> createState() => _TaskEditorState();
 }
@@ -32,8 +31,8 @@ class TaskEditor extends StatefulWidget {
 class _TaskEditorState extends State<TaskEditor> {
   final form = GlobalKey<FormState>();
   late final title = TextEditingController(text: widget.task?.title);
-  late String category = widget.task?.category ?? categories.first;
   late DateTime day = widget.day;
+
   @override
   void dispose() {
     title.dispose();
@@ -46,15 +45,10 @@ class _TaskEditorState extends State<TaskEditor> {
   Future<void> save() async {
     if (saving || !form.currentState!.validate()) return;
     final result =
-        widget.task?.copyWith(
-          title: title.text.trim(),
-          category: category,
-          day: dayKey(day),
-        ) ??
+        widget.task?.copyWith(title: title.text.trim(), day: dayKey(day)) ??
         Task(
           id: DateTime.now().microsecondsSinceEpoch.toString(),
           title: title.text.trim(),
-          category: category,
           day: dayKey(day),
         );
     setState(() {
@@ -140,21 +134,6 @@ class _TaskEditorState extends State<TaskEditor> {
                 },
               ),
               const SizedBox(height: 16),
-              const Text('Категория'),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: {...categories, category}
-                    .map(
-                      (c) => ChoiceChip(
-                        label: Text(c),
-                        selected: category == c,
-                        onSelected: (_) => setState(() => category = c),
-                      ),
-                    )
-                    .toList(),
-              ),
               if (error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
