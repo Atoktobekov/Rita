@@ -11,6 +11,7 @@ import 'package:daily_todo/presentation/controllers/reminder_controller.dart';
 import 'package:daily_todo/presentation/pages/backup_page.dart';
 import 'package:daily_todo/presentation/widgets/task_card.dart';
 import 'package:daily_todo/presentation/widgets/task_editor.dart';
+import 'package:daily_todo/presentation/widgets/reference_widgets.dart';
 import 'support/fakes.dart';
 
 class SelectedBackup extends BackupFiles {
@@ -161,8 +162,13 @@ void main() {
       await tapVisible(tester, find.text('Отменить'));
       expect(planner.tasks.every((t) => t.day == '2026-12-31'), true);
       await tapVisible(tester, find.byKey(const ValueKey('move-unfinished')));
-      await tapVisible(tester, find.byTooltip('Будущие планы'));
-      await tapVisible(tester, find.text('1 января 2027'));
+      final messenger = ScaffoldMessenger.of(
+        tester.element(find.byType(Scaffold)),
+      );
+      messenger.clearSnackBars();
+      await tester.pumpAndSettle();
+      await tapVisible(tester, find.text('Будущие планы'));
+      await tapVisible(tester, find.text('1 января'));
       expect(planner.selected, DateTime(2027, 1, 1));
       await reveal(tester, find.widgetWithText(TaskCard, 'Личная задача'));
       expect(find.widgetWithText(TaskCard, 'Личная задача'), findsOneWidget);
@@ -183,13 +189,12 @@ void main() {
         ], DateTime.utc(2026, 12, 1));
       await open(tester);
       final context = tester.element(find.byType(Scaffold).first);
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => BackupPage(planner: planner, files: files),
-        ),
+      showDesignSheet<void>(
+        context,
+        builder: (_) => BackupPage(planner: planner, files: files),
       );
       await tester.pumpAndSettle();
-      await tapVisible(tester, find.text('Выбрать файл для импорта'));
+      await tapVisible(tester, find.text('Импортировать JSON'));
       expect(find.text('Предпросмотр копии'), findsOneWidget);
       expect(planner.tasks.single.id, 'a');
       await tapVisible(tester, find.byKey(const ValueKey('apply-import')));
@@ -212,10 +217,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(planner.tasks.single.id, 'a');
       files.invalid = true;
-      await tapVisible(tester, find.text('Выбрать файл для импорта'));
+      await tapVisible(tester, find.text('Импортировать JSON'));
       expect(find.text('Некорректная копия'), findsOneWidget);
       expect(planner.tasks.single.id, 'a');
-      await tapVisible(tester, find.text('Экспортировать задачи (1)'));
+      await tapVisible(tester, find.text('Экспортировать JSON'));
       expect(files.exported!.single.id, 'a');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

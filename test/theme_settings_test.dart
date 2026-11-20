@@ -65,42 +65,35 @@ void main() {
       expect(find.byTooltip('Копии задач'), findsOneWidget);
       await tester.tap(find.byTooltip('Копии задач'));
       await tester.pumpAndSettle();
-      expect(find.text('Выбрать файл для импорта'), findsOneWidget);
-      await tester.tap(find.byType(BackButton));
+      expect(find.text('Импортировать JSON'), findsOneWidget);
+      await tester.tap(find.byTooltip('Закрыть'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Статистика'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Настройки'));
       await tester.pumpAndSettle();
       Brightness brightness() =>
-          Theme.of(tester.element(find.text('Тема оформления'))).brightness;
-      await tester.tap(find.byKey(const ValueKey('theme-dark')));
+          Theme.of(tester.element(find.text('Как вам удобно'))).brightness;
+      await tester.tap(find.byKey(const ValueKey('dark-switch')));
       await tester.pumpAndSettle();
       expect(brightness(), Brightness.dark);
-      await tester.tap(find.byKey(const ValueKey('theme-light')));
+      await tester.tap(find.byKey(const ValueKey('dark-switch')));
       await tester.pumpAndSettle();
       expect(brightness(), Brightness.light);
-      await tester.tap(find.byKey(const ValueKey('theme-system')));
+      await tester.tap(find.text('Дизайн приложения'));
+      await tester.pumpAndSettle();
+      final system = find.byKey(const ValueKey('theme-system'));
+      await tester.ensureVisible(system);
+      await tester.tap(system);
       await tester.pumpAndSettle();
       tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
       await tester.pumpAndSettle();
       expect(brightness(), Brightness.dark);
-      await tester.scrollUntilVisible(
-        find.text('Вечернее напоминание'),
-        180,
-        scrollable: find
-            .byWidgetPredicate(
-              (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
-            )
-            .last,
-      );
-      await tester.ensureVisible(
-        find.widgetWithText(ListTile, 'Вечернее напоминание'),
-      );
+      await tester.tap(find.byTooltip('Закрыть').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Вечернее напоминание'));
+      await tester.tap(find.byKey(const ValueKey('reminder-switch')));
       await tester.pumpAndSettle();
-      expect(find.text('Напоминать каждый день'), findsOneWidget);
+      expect(reminder.settings.enabled, true);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       planner.dispose();

@@ -4,6 +4,9 @@ import 'package:intl/intl.dart';
 import '../../data/services/backup_files.dart';
 import '../../data/services/task_backup.dart';
 import '../controllers/planner_controller.dart';
+import '../theme/palette.dart';
+import '../widgets/design_icon.dart';
+import '../widgets/reference_widgets.dart';
 
 class BackupPage extends StatefulWidget {
   const BackupPage({super.key, required this.planner, this.files});
@@ -83,95 +86,105 @@ class _BackupPageState extends State<BackupPage> {
     builder: (context, _) {
       final planner = widget.planner;
       final enabled = !working && !planner.busy;
+      final c = AppPalette.of(context);
       return PopScope(
         canPop: !working,
-        child: Scaffold(
-          appBar: AppBar(title: const Text('Копии задач')),
-          body: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              const Text(
-                'Сохраните задачи в JSON-файл и перенесите их на другое устройство. Настройки напоминания остаются на этом устройстве.',
+        child: DesignSheet(
+          title: 'Ваши задачи — с вами',
+          children: [
+            Text(
+              'Скачайте копию или восстановите задачи из JSON-файла.',
+              style: designText(12, height: 1.8, color: c.muted),
+            ),
+            const SizedBox(height: 23),
+            if (planner.damagedCount > 0) ...[
+              Text(
+                'Не удалось прочитать записей: ${planner.damagedCount}. Они сохранены отдельно на устройстве. В файл попадут только исправные задачи.',
               ),
               const SizedBox(height: 16),
-              if (planner.damagedCount > 0) ...[
+            ],
+            SheetAction(
+              onTap: enabled
+                  ? () => run(() async {
+                      final saved = await files.save(planner.tasks);
+                      if (mounted && saved) {
+                        setState(
+                          () => message = kIsWeb
+                              ? 'Файл передан браузеру для скачивания'
+                              : 'Копия задач сохранена',
+                        );
+                      }
+                    })
+                  : null,
+              icon: DesignSymbol.download,
+              label: 'Экспортировать JSON',
+              trailing: DesignIcon(
+                DesignSymbol.arrow,
+                size: 18,
+                color: c.muted,
+              ),
+            ),
+            SheetAction(
+              onTap: enabled
+                  ? () => run(() async {
+                      setState(() => preview = null);
+                      final selected = await files.pick();
+                      if (mounted) setState(() => preview = selected);
+                    })
+                  : null,
+              icon: DesignSymbol.upload,
+              label: 'Импортировать JSON',
+              trailing: DesignIcon(
+                DesignSymbol.arrow,
+                size: 18,
+                color: c.muted,
+              ),
+            ),
+            if (preview case final copy?) ...[
+              const SizedBox(height: 20),
+              Text(
+                'Предпросмотр копии',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              Text(
+                'Создана: ${DateFormat('d MMMM yyyy, HH:mm', 'ru').format(copy.createdAt.toLocal())}',
+              ),
+              Text(
+                'Задач: ${copy.tasks.length}; выполнено: ${copy.tasks.where((t) => t.done).length}',
+              ),
+              if (copy.tasks.isNotEmpty)
                 Text(
-                  'Не удалось прочитать записей: ${planner.damagedCount}. Они сохранены отдельно на устройстве. В файл попадут только исправные задачи.',
+                  'Даты: ${(copy.tasks.map((t) => t.day).toList()..sort()).first} — ${(copy.tasks.map((t) => t.day).toList()..sort()).last}',
                 ),
-                const SizedBox(height: 16),
-              ],
-              FilledButton.icon(
+              const SizedBox(height: 8),
+              const Text(
+                'Импорт заменит все текущие задачи. Предыдущая версия будет сохранена на устройстве и доступна для восстановления.',
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                key: const ValueKey('apply-import'),
                 onPressed: enabled
                     ? () => run(() async {
-                        final saved = await files.save(planner.tasks);
-                        if (mounted && saved) {
-                          setState(
-                            () => message = kIsWeb
-                                ? 'Файл передан браузеру для скачивания'
-                                : 'Копия задач сохранена',
-                          );
+                        if (!await confirm(
+                          'Заменить задачи?',
+                          'Текущих задач: ${planner.tasks.length}. В копии: ${copy.tasks.length}. Перед заменой сохраним предыдущую версию.',
+                        )) {
+                          return;
+                        }
+                        await planner.importTasks(copy.tasks);
+                        if (mounted) {
+                          setState(() {
+                            preview = null;
+                            message =
+                                'Задачи импортированы. Предыдущую версию можно восстановить.';
+                          });
                         }
                       })
                     : null,
-                icon: const Icon(Icons.download),
-                label: Text('Экспортировать задачи (${planner.tasks.length})'),
+                child: const Text('Заменить задачи из копии'),
               ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: enabled
-                    ? () => run(() async {
-                        setState(() => preview = null);
-                        final selected = await files.pick();
-                        if (mounted) setState(() => preview = selected);
-                      })
-                    : null,
-                icon: const Icon(Icons.upload),
-                label: const Text('Выбрать файл для импорта'),
-              ),
-              if (preview case final copy?) ...[
-                const SizedBox(height: 20),
-                Text(
-                  'Предпросмотр копии',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                Text(
-                  'Создана: ${DateFormat('d MMMM yyyy, HH:mm', 'ru').format(copy.createdAt.toLocal())}',
-                ),
-                Text(
-                  'Задач: ${copy.tasks.length}; выполнено: ${copy.tasks.where((t) => t.done).length}',
-                ),
-                if (copy.tasks.isNotEmpty)
-                  Text(
-                    'Даты: ${(copy.tasks.map((t) => t.day).toList()..sort()).first} — ${(copy.tasks.map((t) => t.day).toList()..sort()).last}',
-                  ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Импорт заменит все текущие задачи. Предыдущая версия будет сохранена на устройстве и доступна для восстановления.',
-                ),
-                const SizedBox(height: 12),
-                FilledButton(
-                  key: const ValueKey('apply-import'),
-                  onPressed: enabled
-                      ? () => run(() async {
-                          if (!await confirm(
-                            'Заменить задачи?',
-                            'Текущих задач: ${planner.tasks.length}. В копии: ${copy.tasks.length}. Перед заменой сохраним предыдущую версию.',
-                          )) {
-                            return;
-                          }
-                          await planner.importTasks(copy.tasks);
-                          if (mounted) {
-                            setState(() {
-                              preview = null;
-                              message =
-                                  'Задачи импортированы. Предыдущую версию можно восстановить.';
-                            });
-                          }
-                        })
-                      : null,
-                  child: const Text('Заменить задачи из копии'),
-                ),
-              ],
+            ],
+            if (planner.canRestore) ...[
               const SizedBox(height: 24),
               Text(
                 'Предыдущая версия',
@@ -182,7 +195,7 @@ class _BackupPageState extends State<BackupPage> {
               ),
               const SizedBox(height: 8),
               OutlinedButton(
-                onPressed: enabled && planner.canRestore
+                onPressed: enabled
                     ? () => run(() async {
                         if (!await confirm(
                           'Восстановить предыдущую версию?',
@@ -201,28 +214,28 @@ class _BackupPageState extends State<BackupPage> {
                     : null,
                 child: const Text('Восстановить предыдущую версию'),
               ),
-              if (working && !confirming)
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-              if (message != null)
-                Semantics(
-                  liveRegion: true,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: Text(
-                      message!,
-                      style: TextStyle(
-                        color: failed
-                            ? Theme.of(context).colorScheme.error
-                            : null,
-                      ),
+            ],
+            if (working && !confirming)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            if (message != null)
+              Semantics(
+                liveRegion: true,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Text(
+                    message!,
+                    style: TextStyle(
+                      color: failed
+                          ? Theme.of(context).colorScheme.error
+                          : null,
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       );
     },

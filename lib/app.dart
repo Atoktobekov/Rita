@@ -48,8 +48,8 @@ class _DailyAppState extends State<DailyApp> {
             seedColor: colors.strong,
             brightness: brightness,
           ).copyWith(
-            primary: colors.action,
-            onPrimary: colors.onAction,
+            primary: colors.ink,
+            onPrimary: colors.paper,
             primaryContainer: colors.cream,
             onPrimaryContainer: colors.ink,
             surface: colors.card,
@@ -80,9 +80,7 @@ class _DailyAppState extends State<DailyApp> {
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: colors.paper,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(colors.radius + 8),
-          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
       ),
       dialogTheme: DialogThemeData(

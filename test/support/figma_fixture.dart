@@ -1,52 +1,32 @@
 import 'package:daily_todo/domain/entities/task.dart';
 
-// The export's sample content is used only for visual comparisons, never seeded
-// into the user's local database.
+// Same sample dates and tasks as the Figma export. Used only for comparison.
 List<Task> figmaFixture() {
-  final days = <String, List<(String, bool)>>{
-    '2025-01-15': [
-      ('Зарядка 15 минут', true),
-      ('Сделать экран статистики', false),
-      ('Прочитать 20 страниц', false),
-      ('Выпить 2 л воды', true),
-    ],
-    '2025-01-14': [
-      ('Зарядка 15 минут', true),
-      ('Прочитать 20 страниц', true),
-      ('Выучить урок по Dart', true),
-      ('Позвонить родителям', false),
-    ],
-    '2025-01-13': [
-      ('Пробежка', true),
-      ('Разобрать почту', true),
-      ('Закончить экран профиля', true),
-    ],
-    '2025-01-12': [
-      ('Медитация', true),
-      ('Приготовить ужин', false),
-      ('Виджет списка задач', true),
-      ('Растяжка', false),
-      ('Выпить 2 л воды', true),
-    ],
-    '2025-01-11': [
-      ('Прогулка', false),
-      ('Тема про состояние во Flutter', true),
-    ],
-    '2025-01-10': [
-      ('Hive: хранение данных', true),
-      ('Зарядка', true),
-      ('Чтение', true),
-      ('Уборка', true),
-    ],
-  };
+  const titles = [
+    'Прочитать 20 страниц',
+    'Сделать тренировку',
+    'Записаться к врачу',
+    'Закончить проект',
+    'Купить продукты',
+  ];
+  const history = [
+    (17, 4, 5),
+    (16, 5, 5),
+    (15, 3, 4),
+    (14, 2, 4),
+    (13, 3, 5),
+    (12, 4, 4),
+  ];
   return [
-    for (final entry in days.entries)
-      for (final (i, item) in entry.value.indexed)
+    for (final (i, title) in titles.indexed)
+      Task(id: '18-$i', title: title, done: i >= 3, day: '2026-06-18'),
+    for (final (date, done, total) in history)
+      for (var i = 0; i < total; i++)
         Task(
-          id: '${entry.key}-$i',
-          title: item.$1,
-          done: item.$2,
-          day: entry.key,
+          id: '$date-$i',
+          title: titles[i],
+          done: i < done,
+          day: '2026-06-$date',
         ),
   ];
 }

@@ -88,7 +88,7 @@ void main() {
   );
 
   test(
-    'All eight palettes have readable text and distinct dark backgrounds',
+    'The eight combinations use readable colors and match the shared dark background',
     () {
       double contrast(Color a, Color b) {
         final first = a.computeLuminance(), second = b.computeLuminance();
@@ -123,7 +123,7 @@ void main() {
           if (dark) darkBackgrounds.add(palette.paper);
         }
       }
-      expect(darkBackgrounds, hasLength(4));
+      expect(darkBackgrounds, {const Color(0xFF25221F)});
     },
   );
 
@@ -239,6 +239,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('nav-section-2')));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Настройки'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Дизайн приложения'));
       await tester.pumpAndSettle();
       Future<void> select(AppDesign design) async {
         final tile = find.byKey(ValueKey('design-${design.name}'));

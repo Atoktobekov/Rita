@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../controllers/theme_controller.dart';
 import '../controllers/reminder_controller.dart';
-import 'reminder_page.dart';
 import '../theme/palette.dart';
+import '../widgets/design_icon.dart';
+import '../widgets/reference_widgets.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
@@ -14,154 +15,252 @@ class SettingsPage extends StatelessWidget {
   final ThemeController appearance;
   final ReminderController reminder;
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Настройки')),
-    body: ListenableBuilder(
-      listenable: appearance,
-      builder: (context, _) => ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text(
-            'Тема оформления',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          for (final (mode, label, icon) in [
-            (ThemeMode.light, 'Светлая', Icons.light_mode_outlined),
-            (ThemeMode.dark, 'Тёмная', Icons.dark_mode_outlined),
-            (ThemeMode.system, 'Системная', Icons.brightness_auto_outlined),
-          ])
-            ListTile(
-              key: ValueKey('theme-${mode.name}'),
-              leading: Icon(icon),
-              title: Text(label),
-              selected: appearance.mode == mode,
-              trailing: appearance.mode == mode
-                  ? const Icon(Icons.check)
-                  : null,
-              enabled: !appearance.busy,
-              onTap: () async {
-                try {
-                  await appearance.update(mode);
-                } catch (_) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Не удалось сохранить тему. Попробуйте ещё раз.',
-                        ),
-                      ),
-                    );
-                  }
-                }
-              },
+  Future<void> change(
+    BuildContext context,
+    Future<void> Function() action,
+    String description,
+  ) async {
+    try {
+      await action();
+    } catch (_) {
+      if (context.mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            content: Text(
+              'Не удалось сохранить $description. Попробуйте ещё раз.',
             ),
-          const Divider(height: 32),
-          Text(
-            'Дизайн приложения',
-            style: Theme.of(context).textTheme.titleMedium,
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Закрыть'),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          for (final design in AppDesign.values)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Builder(
-                builder: (context) {
-                  final preview = AppPalette(
-                    Theme.of(context).brightness == Brightness.dark,
-                    design: design,
-                  );
-                  return Semantics(
-                    selected: appearance.design == design,
-                    child: Material(
-                      color: AppPalette.of(context).card,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(preview.radius),
-                        side: BorderSide(
-                          color: appearance.design == design
-                              ? AppPalette.of(context).strong
-                              : AppPalette.of(context).line,
-                          width: appearance.design == design ? 2 : 1,
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([appearance, reminder]),
+    builder: (context, _) {
+      final c = AppPalette.of(context);
+      final settings = reminder.settings;
+      final available = reminder.supported && !reminder.busy;
+      final time = TimeOfDay(hour: settings.hour, minute: settings.minute);
+      return DesignSheet(
+        title: 'Как вам удобно',
+        children: [
+          setting(
+            c,
+            icon: DesignSymbol.moon,
+            label: 'Тёмная тема',
+            value: c.dark,
+            switchKey: const ValueKey('dark-switch'),
+            onChanged: appearance.busy
+                ? null
+                : (value) => change(
+                    context,
+                    () => appearance.update(
+                      value ? ThemeMode.dark : ThemeMode.light,
+                    ),
+                    'тему',
+                  ),
+          ),
+          setting(
+            c,
+            icon: DesignSymbol.bell,
+            label: 'Вечернее напоминание',
+            value: settings.enabled,
+            switchKey: const ValueKey('reminder-switch'),
+            onChanged: available
+                ? (value) => reminder.update(settings.copyWith(enabled: value))
+                : null,
+          ),
+          if (settings.enabled)
+            InkWell(
+              onTap: available
+                  ? () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: time,
+                        builder: (context, child) => MediaQuery(
+                          data: MediaQuery.of(
+                            context,
+                          ).copyWith(alwaysUse24HourFormat: true),
+                          child: child!,
                         ),
+                      );
+                      if (picked != null) {
+                        await reminder.update(
+                          reminder.settings.copyWith(
+                            hour: picked.hour,
+                            minute: picked.minute,
+                          ),
+                        );
+                      }
+                    }
+                  : null,
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 65),
+                child: Row(
+                  children: [
+                    Expanded(child: Text('Время', style: designText(12))),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: c.cream,
+                        borderRadius: BorderRadius.circular(7),
                       ),
-                      child: ListTile(
-                        key: ValueKey('design-${design.name}'),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        leading: Container(
-                          width: 48,
-                          height: 56,
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(
-                            color: preview.paper,
-                            border: Border.all(color: preview.line),
-                            borderRadius: BorderRadius.circular(
-                              preview.radius / 2,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Container(height: 6, color: preview.accent),
-                              const SizedBox(height: 5),
-                              Container(height: 7, decoration: preview.panel()),
-                              const SizedBox(height: 4),
-                              Container(
-                                height: 7,
-                                decoration: preview.panel(color: preview.cream),
-                              ),
-                            ],
-                          ),
-                        ),
-                        title: Text(
-                          design.title,
-                          style: preview.heading.copyWith(
-                            fontSize: 20,
-                            color: AppPalette.of(context).ink,
-                          ),
-                        ),
-                        subtitle: Text(design.description),
-                        trailing: appearance.design == design
-                            ? const Icon(Icons.check_circle)
-                            : null,
-                        enabled: !appearance.busy,
-                        onTap: () async {
-                          try {
-                            await appearance.updateDesign(design);
-                          } catch (_) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Не удалось сохранить дизайн. Попробуйте ещё раз.',
-                                  ),
-                                ),
-                              );
-                            }
-                          }
-                        },
+                      child: Text(
+                        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+                        style: designText(12),
                       ),
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
             ),
-          const Divider(height: 32),
-          ListTile(
-            leading: const Icon(Icons.notifications_none),
-            title: const Text('Вечернее напоминание'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
+          if (reminder.error != null || !reminder.supported)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  reminder.error ?? 'Уведомления доступны на Android и iOS.',
+                  style: designText(
+                    12,
+                    height: 1.8,
+                    color: reminder.error == null
+                        ? c.muted
+                        : Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ),
+            ),
+          SheetAction(
+            icon: DesignSymbol.sun,
+            label: 'Дизайн приложения',
+            trailing: DesignIcon(
+              DesignSymbol.chevron,
+              size: 17,
+              color: c.muted,
+            ),
+            onTap: () => showDesignSheet<void>(
               context,
-              MaterialPageRoute<void>(
-                builder: (_) => ReminderPage(controller: reminder),
+              builder: (_) => ListenableBuilder(
+                listenable: appearance,
+                builder: (context, _) => DesignSheet(
+                  title: 'Дизайн приложения',
+                  children: [
+                    for (final design in AppDesign.values)
+                      ListTile(
+                        key: ValueKey('design-${design.name}'),
+                        title: Text(design.title),
+                        subtitle: Text(design.description),
+                        selected: appearance.design == design,
+                        trailing: appearance.design == design
+                            ? const DesignIcon(DesignSymbol.check, size: 19)
+                            : null,
+                        enabled: !appearance.busy,
+                        onTap: () => change(
+                          context,
+                          () => appearance.updateDesign(design),
+                          'дизайн',
+                        ),
+                      ),
+                    const Divider(),
+                    ListTile(
+                      key: const ValueKey('theme-system'),
+                      title: const Text('Следовать режиму системы'),
+                      selected: appearance.mode == ThemeMode.system,
+                      trailing: appearance.mode == ThemeMode.system
+                          ? const DesignIcon(DesignSymbol.check, size: 19)
+                          : null,
+                      enabled: !appearance.busy,
+                      onTap: () => change(
+                        context,
+                        () => appearance.update(ThemeMode.system),
+                        'тему',
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ],
+      );
+    },
+  );
+
+  Widget setting(
+    AppPalette c, {
+    required DesignSymbol icon,
+    required String label,
+    required bool value,
+    required Key switchKey,
+    required ValueChanged<bool>? onChanged,
+  }) => Semantics(
+    toggled: value,
+    label: label,
+    enabled: onChanged != null,
+    onTap: onChanged == null ? null : () => onChanged(!value),
+    excludeSemantics: true,
+    child: InkWell(
+      key: switchKey,
+      onTap: onChanged == null ? null : () => onChanged(!value),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 73),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: c.line)),
+        ),
+        child: Row(
+          children: [
+            DesignIcon(icon, size: 22),
+            const SizedBox(width: 10),
+            Expanded(child: Text(label, style: designText(12))),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 46,
+              height: 48,
+              child: Center(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: 26,
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: value ? c.accent : c.line,
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: AnimatedAlign(
+                    duration: const Duration(milliseconds: 200),
+                    alignment: value
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: c.card,
+                        shape: BoxShape.circle,
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x22000000),
+                            blurRadius: 3,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );

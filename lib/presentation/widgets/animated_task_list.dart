@@ -13,6 +13,7 @@ class AnimatedTaskList extends StatefulWidget {
     required this.onEdit,
     required this.onDelete,
     this.busy = false,
+    this.compact = false,
   });
 
   final List<Task> tasks;
@@ -20,6 +21,7 @@ class AnimatedTaskList extends StatefulWidget {
   final ValueChanged<Task> onEdit;
   final ValueChanged<Task> onDelete;
   final bool busy;
+  final bool compact;
 
   @override
   State<AnimatedTaskList> createState() => _AnimatedTaskListState();
@@ -97,6 +99,8 @@ class _AnimatedTaskListState extends State<AnimatedTaskList>
   @override
   Widget build(BuildContext context) => Column(
     children: [
+      if (_ordered.isNotEmpty && AppPalette.of(context).strict)
+        Divider(height: 1, color: AppPalette.of(context).line),
       for (final task in _ordered)
         AnimatedBuilder(
           key: ValueKey(task.id),
@@ -109,9 +113,14 @@ class _AnimatedTaskListState extends State<AnimatedTaskList>
           ),
           child: Padding(
             key: _keys.putIfAbsent(task.id, GlobalKey.new),
-            padding: EdgeInsets.only(bottom: AppPalette.of(context).taskGap),
+            padding: EdgeInsets.only(
+              bottom: task == _ordered.last
+                  ? 0
+                  : AppPalette.of(context).taskGap,
+            ),
             child: TaskCard(
               task: task,
+              compact: widget.compact,
               onToggle: widget.busy ? null : () => widget.onToggle(task),
               onEdit: widget.busy ? null : () => widget.onEdit(task),
               onDelete: widget.busy ? null : () => widget.onDelete(task),

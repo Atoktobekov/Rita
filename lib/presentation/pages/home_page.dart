@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:intl/intl.dart';
 import '../../core/calendar.dart';
@@ -9,6 +9,7 @@ import '../controllers/planner_controller.dart';
 import '../controllers/reminder_controller.dart';
 import '../theme/palette.dart';
 import '../widgets/design_icon.dart';
+import '../widgets/reference_widgets.dart';
 import '../controllers/theme_controller.dart';
 import 'settings_page.dart';
 import '../widgets/animated_task_list.dart';
@@ -42,6 +43,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final scroll = ScrollController();
   final pages = PageController();
   String? draftError;
+  bool quickOpen = false;
   Timer? timer;
 
   PlannerController get planner => widget.planner;
@@ -135,13 +137,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> edit(Task task, {bool selectEditedDay = true}) async {
-    final result = await showModalBottomSheet<Task>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: AppPalette.of(context).paper,
-      showDragHandle: true,
-      constraints: const BoxConstraints(maxWidth: 560),
+    final result = await showDesignSheet<Task>(
+      context,
+      enableDrag: false,
       builder: (_) => TaskEditor(
         task: task,
         day: DateTime.parse(task.day),
@@ -170,18 +168,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> showPlans() async {
-    final date = await Navigator.push<DateTime>(
+    final date = await showDesignSheet<DateTime>(
       context,
-      MaterialPageRoute(builder: (_) => PlansPage(planner: planner)),
+      builder: (_) => PlansPage(planner: planner),
     );
     if (date != null && mounted) selectDay(date);
   }
 
   void showBackups() {
     draftFocus.unfocus();
-    Navigator.push<void>(
+    showDesignSheet<void>(
       context,
-      MaterialPageRoute(builder: (_) => BackupPage(planner: planner)),
+      enableDrag: false,
+      builder: (_) => BackupPage(planner: planner),
     );
   }
 
@@ -229,88 +228,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       page = 0;
       filter = 0;
       draftError = null;
+      quickOpen = false;
     });
     if (scroll.hasClients) scroll.jumpTo(0);
     animatePage(0);
   }
 
   Future<void> chooseDate() async {
-    final date = await pickDay(context, planner.selected);
-    if (date != null && mounted) selectDay(date);
-  }
-
-  Future<void> dayMenu() async {
-    draftFocus.unfocus();
-    final value = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      backgroundColor: AppPalette.of(context).paper,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('План на день', style: TextStyle(fontSize: 24)),
-                ),
-              ),
-              ListTile(
-                key: const ValueKey('today'),
-                selected: planner.selected == planner.today,
-                selectedTileColor: AppPalette.of(context).sand,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(
-                    AppPalette.of(context).radius,
-                  ),
-                ),
-                title: const Text('Сегодня'),
-                subtitle: Text(
-                  DateFormat('d MMMM', 'ru').format(planner.today),
-                ),
-                trailing: planner.selected == planner.today
-                    ? const DesignIcon(DesignSymbol.check, size: 20)
-                    : null,
-                leading: const DesignIcon(DesignSymbol.sun),
-                onTap: () => Navigator.pop(context, 'today'),
-              ),
-              ListTile(
-                key: const ValueKey('tomorrow'),
-                selected: planner.selected == nextDay(planner.today),
-                selectedTileColor: AppPalette.of(context).sand,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(
-                    AppPalette.of(context).radius,
-                  ),
-                ),
-                title: const Text('Завтра'),
-                subtitle: Text(
-                  DateFormat('d MMMM', 'ru').format(nextDay(planner.today)),
-                ),
-                trailing: planner.selected == nextDay(planner.today)
-                    ? const DesignIcon(DesignSymbol.check, size: 20)
-                    : null,
-                leading: const DesignIcon(DesignSymbol.moon),
-                onTap: () => Navigator.pop(context, 'tomorrow'),
-              ),
-              ListTile(
-                key: const ValueKey('choose-date'),
-                title: const Text('Выбрать дату'),
-                leading: const DesignIcon(DesignSymbol.calendar),
-                onTap: () => Navigator.pop(context, 'date'),
-              ),
-            ],
-          ),
-        ),
-      ),
+    final date = await showDesignSheet<DateTime>(
+      context,
+      builder: (_) => CalendarSheet(initialDate: planner.selected),
     );
-    if (!mounted) return;
-    if (value == 'today') selectDay(planner.today);
-    if (value == 'tomorrow') selectDay(nextDay(planner.today));
-    if (value == 'date') await chooseDate();
+    if (date != null && mounted) selectDay(date);
   }
 
   void animatePage(int value) {
@@ -332,37 +261,51 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     animatePage(value);
   }
 
-  Future<void> showDayDetails(DateTime day) => showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    showDragHandle: true,
-    backgroundColor: AppPalette.of(context).paper,
-    constraints: const BoxConstraints(maxWidth: 560),
-    builder: (sheetContext) => FractionallySizedBox(
-      heightFactor: .65,
-      child: ListenableBuilder(
+  Future<void> addForDate(DateTime date) async {
+    await showDesignSheet<Task>(
+      context,
+      enableDrag: false,
+      builder: (_) => TaskEditor(day: date, onSave: planner.save),
+    );
+  }
+
+  Future<void> showDayDetails(DateTime day) async {
+    await showDesignSheet<void>(
+      context,
+      builder: (_) => ListenableBuilder(
         listenable: planner,
         builder: (context, _) {
+          final c = AppPalette.of(context);
           final tasks = planner.tasks
-              .where((t) => t.day == dayKey(day))
+              .where((task) => task.day == dayKey(day))
               .toList();
           final done = tasks.where((t) => t.done).length;
-          return ListView(
+          return DesignSheet(
             key: ValueKey('day-details-${dayKey(day)}'),
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            title: DateFormat('d MMMM, EEEE', 'ru').format(day),
             children: [
-              Text(
-                DateFormat('d MMMM yyyy', 'ru').format(day),
-                style: const TextStyle(fontSize: 24),
+              Padding(
+                padding: const EdgeInsets.only(top: 5, bottom: 20),
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  spacing: 8,
+                  children: [
+                    Text(
+                      'Выполнено $done из ${tasks.length}',
+                      style: designText(10, color: c.muted),
+                    ),
+                    Text(
+                      'Ваш день в деталях',
+                      style: designText(10, color: c.muted),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Выполнено $done из ${tasks.length}',
-                style: captionStyle(context),
-              ),
-              const SizedBox(height: 16),
-              if (tasks.isEmpty) const Text('На этот день задач нет.'),
+              if (tasks.isEmpty)
+                Text(
+                  'На этот день задач нет.',
+                  style: designText(13, color: c.muted),
+                ),
               AnimatedTaskList(
                 tasks: tasks,
                 busy: planner.busy,
@@ -372,47 +315,44 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 onEdit: (task) => edit(task, selectEditedDay: false),
                 onDelete: delete,
               ),
-              TextButton.icon(
+              const SizedBox(height: 10),
+              DesignButton(
                 key: const ValueKey('day-details-add'),
-                onPressed: planner.busy
-                    ? null
-                    : () => showModalBottomSheet<Task>(
-                        context: sheetContext,
-                        isScrollControlled: true,
-                        useSafeArea: true,
-                        showDragHandle: true,
-                        backgroundColor: AppPalette.of(context).paper,
-                        builder: (_) =>
-                            TaskEditor(day: day, onSave: planner.save),
-                      ),
-                icon: const Icon(Icons.add),
-                label: const Text('Добавить задачу'),
+                label: 'Добавить задачу',
+                icon: DesignSymbol.plus,
+                onPressed: planner.busy ? null : () => addForDate(day),
+              ),
+              const SizedBox(height: 17),
+              Text(
+                'Удерживайте задачу, чтобы изменить или удалить.',
+                textAlign: TextAlign.center,
+                style: designText(12, height: 1.8, color: c.muted),
               ),
             ],
           );
         },
       ),
-    ),
-  );
+    );
+  }
 
   Widget tabContent(int index) => ListView(
     key: PageStorageKey('tab-scroll-$index'),
     controller: index == 0 ? scroll : null,
     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-    padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+    padding: const EdgeInsets.fromLTRB(23, 0, 23, 20),
     children: [
+      wordmark(AppPalette.of(context), day: index == 0),
       if (index == 0)
         ...dayView()
       else if (index == 1)
         ArchiveView(
           days: planner.pastDays,
           tasks: planner.tasks,
-          today: planner.today,
           onToggle: (task) =>
               attempt(() => planner.save(task.copyWith(done: !task.done))),
           onEdit: edit,
           onDelete: delete,
-          onOpenDay: selectDay,
+          onAdd: addForDate,
           onChooseDate: chooseDate,
           busy: planner.busy,
           onBackups: showBackups,
@@ -420,16 +360,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       else if (index == 2)
         StatisticsView(
           statistics: planner.statistics,
-          today: planner.today,
           mode: statisticsMode,
           onOpenDay: showDayDetails,
-          onSettings: () => Navigator.push(
+          onSettings: () => showDesignSheet<void>(
             context,
-            MaterialPageRoute<void>(
-              builder: (_) => SettingsPage(
-                appearance: widget.appearance,
-                reminder: widget.reminder,
-              ),
+            builder: (_) => SettingsPage(
+              appearance: widget.appearance,
+              reminder: widget.reminder,
             ),
           ),
           onModeChanged: (value) => setState(() => statisticsMode = value),
@@ -442,38 +379,135 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: planner,
-    builder: (context, _) => Scaffold(
-      backgroundColor: AppPalette.of(context).paper,
-      bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom == 0
-          ? Align(
-              heightFactor: 1,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 430),
-                child: navigation(),
+    builder: (context, _) => AnnotatedRegion<SystemUiOverlayStyle>(
+      value: AppPalette.of(context).dark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: AppPalette.of(context).paper,
+        bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom == 0
+            ? Align(
+                heightFactor: 1,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 430),
+                  child: navigation(),
+                ),
+              )
+            : null,
+        body: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 430),
+            child: SafeArea(
+              bottom: false,
+              minimum: const EdgeInsets.only(top: 46),
+              child: PageView.builder(
+                key: const ValueKey('tab-pages'),
+                controller: pages,
+                pageSnapping: false,
+                physics: const _TabScrollPhysics(),
+                itemCount: 4,
+                onPageChanged: (value) {
+                  draftFocus.unfocus();
+                  setState(() => page = value);
+                },
+                itemBuilder: (context, index) => tabContent(index),
               ),
-            )
-          : null,
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 430),
-          child: SafeArea(
-            bottom: false,
-            child: PageView.builder(
-              key: const ValueKey('tab-pages'),
-              controller: pages,
-              pageSnapping: false,
-              physics: const _TabScrollPhysics(),
-              itemCount: 4,
-              onPageChanged: (value) {
-                draftFocus.unfocus();
-                setState(() => page = value);
-              },
-              itemBuilder: (context, index) => tabContent(index),
             ),
           ),
         ),
       ),
+    ),
+  );
+
+  Widget wordmark(AppPalette c, {required bool day}) => Container(
+    height: 16 + MediaQuery.textScalerOf(context).scale(28),
+    margin: EdgeInsets.only(
+      bottom: day
+          ? c.editorial
+                ? 18
+                : 8
+          : 0,
+    ),
+    padding: EdgeInsets.only(bottom: c.editorial ? 9 : 0),
+    decoration: c.editorial
+        ? BoxDecoration(
+            border: Border(bottom: BorderSide(color: c.line)),
+          )
+        : null,
+    child: Row(
+      children: [
+        Flexible(
+          flex: 3,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Transform.translate(
+              offset: Offset(0, c.editorial ? -1 : 0),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: c.strict ? 'DAILY' : 'daily'),
+                      TextSpan(
+                        text: '.',
+                        style: TextStyle(color: c.muted),
+                      ),
+                    ],
+                  ),
+                  style:
+                      designText(
+                        c.strict
+                            ? 23
+                            : c.editorial
+                            ? 29
+                            : 28,
+                        color: c.playful ? const Color(0xFF756096) : c.ink,
+                        weight: c.editorial ? 500 : 700,
+                        height: 1.2,
+                        spacing: c.strict
+                            ? -1
+                            : c.editorial
+                            ? -1.8
+                            : -1.5,
+                        font: c.editorial ? 'Literata' : 'DM Sans',
+                      ).copyWith(
+                        fontStyle: c.editorial
+                            ? FontStyle.italic
+                            : FontStyle.normal,
+                      ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 2,
+          child: Text(
+            switch (c.design) {
+              AppDesign.strict => 'МЕНЬШЕ, НО ЛУЧШЕ',
+              AppDesign.play => 'Всё получится',
+              AppDesign.editorial => 'Личный планировщик',
+              _ => 'В своём ритме',
+            },
+            textAlign: TextAlign.right,
+            style: designText(
+              c.strict ? 8 : 11,
+              spacing: c.strict ? 1 : 0,
+              color: c.muted,
+            ),
+          ),
+        ),
+        if (!c.editorial) ...[
+          const SizedBox(width: 7),
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(color: c.accent, shape: BoxShape.circle),
+          ),
+        ],
+      ],
     ),
   );
 
@@ -483,156 +517,247 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       DesignSymbol.sun,
       DesignSymbol.archive,
       DesignSymbol.chart,
-      DesignSymbol.trophy,
+      DesignSymbol.award,
     ];
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppPalette.of(context).card.withValues(alpha: .95),
-            border: Border(
-              top: BorderSide(color: AppPalette.of(context).inkOpacity(.05)),
-            ),
-          ),
-          child: SafeArea(
-            top: false,
-            minimum: const EdgeInsets.only(bottom: 20),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-              child: AnimatedBuilder(
-                animation: pages,
-                builder: (context, _) {
-                  final position =
-                      pages.hasClients && pages.position.hasContentDimensions
-                      ? (pages.page ?? page.toDouble()).clamp(0.0, 3.0)
-                      : page.toDouble();
-                  final colors = AppPalette.of(context);
-                  return Stack(
-                    children: [
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: Align(
-                            alignment: Alignment(
-                              -1 + 2 * position / (labels.length - 1),
-                              0,
+    final c = AppPalette.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: c.paper,
+        border: Border(top: BorderSide(color: c.line)),
+      ),
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(bottom: 34),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(13, 10, 13, 5),
+          child: AnimatedBuilder(
+            animation: pages,
+            builder: (context, _) {
+              final position =
+                  pages.hasClients && pages.position.hasContentDimensions
+                  ? (pages.page ?? page.toDouble()).clamp(0.0, 3.0)
+                  : page.toDouble();
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Align(
+                        alignment: Alignment(-1 + 2 * position / 3, 0),
+                        child: FractionallySizedBox(
+                          widthFactor: .25,
+                          heightFactor: 1,
+                          child: DecoratedBox(
+                            key: const ValueKey('nav-indicator'),
+                            decoration: BoxDecoration(
+                              color: c.navHighlight,
+                              borderRadius: BorderRadius.circular(c.navRadius),
                             ),
-                            child: FractionallySizedBox(
-                              widthFactor: 1 / labels.length,
-                              heightFactor: 1,
-                              child: DecoratedBox(
-                                key: const ValueKey('nav-indicator'),
-                                decoration: BoxDecoration(
-                                  color: colors.sage,
-                                  borderRadius: BorderRadius.circular(
-                                    colors.navRadius,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var i = 0; i < labels.length; i++)
+                          Expanded(
+                            child: Semantics(
+                              selected: page == i,
+                              button: true,
+                              child: InkWell(
+                                key: ValueKey('nav-section-$i'),
+                                borderRadius: BorderRadius.circular(
+                                  c.navRadius,
+                                ),
+                                onTap: () => setPage(i),
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    minHeight: 61,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 2,
+                                    vertical: 4,
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      DesignIcon(
+                                        symbols[i],
+                                        size: 23,
+                                        color: navColor(c, position, i),
+                                      ),
+                                      const SizedBox(height: 7),
+                                      Text(
+                                        labels[i],
+                                        textAlign: TextAlign.center,
+                                        style: designText(
+                                          10,
+                                          color: navColor(c, position, i),
+                                          weight: page == i
+                                              ? 550
+                                              : c.strict
+                                              ? 500
+                                              : 400,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
-                      IntrinsicHeight(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            for (var i = 0; i < labels.length; i++)
-                              Expanded(
-                                child: Semantics(
-                                  selected: page == i,
-                                  button: true,
-                                  child: InkWell(
-                                    onTap: () => setPage(i),
-                                    borderRadius: BorderRadius.circular(
-                                      colors.navRadius,
-                                    ),
-                                    child: Container(
-                                      key: ValueKey('nav-section-$i'),
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                        vertical: 6,
-                                      ),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Transform.translate(
-                                            offset: Offset(
-                                              0,
-                                              -2 *
-                                                  (1 - (position - i).abs())
-                                                      .clamp(0.0, 1.0),
-                                            ),
-                                            child: DesignIcon(
-                                              symbols[i],
-                                              size: 22,
-                                              color: Color.lerp(
-                                                colors.inkOpacity(.4),
-                                                colors.ink,
-                                                (1 - (position - i).abs())
-                                                    .clamp(0.0, 1.0),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            labels[i],
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              height: 1.5,
-                                              fontWeight: FontWeight.w600,
-                                              color: Color.lerp(
-                                                colors.inkOpacity(.4),
-                                                colors.ink,
-                                                (1 - (position - i).abs())
-                                                    .clamp(0.0, 1.0),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
     );
   }
 
+  Color navColor(AppPalette c, num position, int tab) => Color.lerp(
+    c.muted,
+    c.playful
+        ? const Color(0xFF7854AD)
+        : c.strict && c.dark
+        ? c.paper
+        : c.ink,
+    (1 - (position - tab).abs()).clamp(0.0, 1.0).toDouble(),
+  )!;
+
   List<Widget> dayView() {
-    final colors = AppPalette.of(context);
+    final c = AppPalette.of(context);
     final tasks = planner.selectedTasks;
     final done = tasks.where((t) => t.done).length;
     final percent = tasks.isEmpty ? 0 : (done / tasks.length * 100).round();
     final visible = tasks
-        .where((t) => (filter == 0 || (filter == 1 ? !t.done : t.done)))
+        .where((t) => filter == 0 || (filter == 1 ? !t.done : t.done))
         .toList();
-    final dateText = DateFormat('EEEE, d MMMM', 'ru').format(planner.selected);
-    final isToday = planner.selected == planner.today;
-    final yesterday = DateTime(
-      planner.today.year,
-      planner.today.month,
-      planner.today.day - 1,
+    final today = planner.today;
+    final tomorrow = nextDay(today);
+    final isToday = planner.selected == today;
+    final otherDate = !isToday && planner.selected != tomorrow;
+    final headline = switch (c.design) {
+      AppDesign.strict => 'План на день',
+      AppDesign.play => 'Твой день.',
+      _ => 'Хороший день',
+    };
+    final subhead = switch (c.design) {
+      AppDesign.play => 'Не всё сразу. По одной победе.',
+      AppDesign.editorial => 'Оставьте место для важного.',
+      _ => 'Маленькие шаги к большому.',
+    };
+    final progress = Container(
+      key: const ValueKey('day-progress'),
+      padding: c.editorial
+          ? const EdgeInsets.only(bottom: 19)
+          : EdgeInsets.fromLTRB(
+              c.strict ? 17 : 16,
+              c.strict ? 17 : 12,
+              c.strict ? 17 : 16,
+              c.strict
+                  ? 17
+                  : c.playful
+                  ? 13
+                  : 12,
+            ),
+      decoration: c.editorial
+          ? BoxDecoration(
+              border: Border(bottom: BorderSide(color: c.line)),
+            )
+          : BoxDecoration(
+              color: c.strict
+                  ? c.ink
+                  : c.playful && !c.dark
+                  ? const Color(0xFFECE5FA)
+                  : c.cream,
+              borderRadius: BorderRadius.circular(c.radius),
+            ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      const TextSpan(text: 'Выполнено '),
+                      TextSpan(
+                        text: '$done из ${tasks.length}',
+                        style: designText(c.editorial ? 11 : 12, weight: 550),
+                      ),
+                    ],
+                  ),
+                  style: designText(c.editorial ? 11 : 12, color: c.onHero),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(text: '$percent'),
+                    TextSpan(text: '%', style: designText(12)),
+                  ],
+                ),
+                style: designText(
+                  c.editorial ? 21 : 20,
+                  color: c.strict ? c.accent : c.ink,
+                  font: c.editorial ? 'Literata' : 'DM Sans',
+                  weight: 500,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: c.playful ? 10 : 9),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(end: percent / 100),
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 400),
+              builder: (_, value, _) => LinearProgressIndicator(
+                value: value,
+                minHeight: c.playful
+                    ? 7
+                    : c.editorial
+                    ? 3
+                    : 4,
+                borderRadius: BorderRadius.circular(8),
+                color: c.strict
+                    ? c.accent
+                    : c.playful
+                    ? const Color(0xFFA58BDC)
+                    : c.editorial
+                    ? const Color(0xFF8BAAB5)
+                    : const Color(0xFFDFAD70),
+                backgroundColor: c.strict
+                    ? const Color(0x22FFFFFF)
+                    : c.playful && !c.dark
+                    ? const Color(0xFFDCD1EE)
+                    : c.inkOpacity(.07),
+                semanticsLabel: 'Выполнено $percent процентов',
+              ),
+            ),
+          ),
+          if (c.playful) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Хорошее начало. Продолжим?',
+              style: designText(9, color: c.muted),
+            ),
+          ],
+        ],
+      ),
     );
-    final title = isToday
-        ? 'Твой день'
-        : planner.selected == yesterday
-        ? 'Вчера'
-        : planner.selected == nextDay(planner.today)
-        ? 'Завтра'
-        : 'Твои планы';
+
     return [
       if (planner.damagedCount > 0)
         Padding(
@@ -645,342 +770,375 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ),
           ),
         ),
-      Material(
-        color: AppPalette.of(context).sand.withValues(alpha: .65),
-        borderRadius: BorderRadius.circular(AppPalette.of(context).radius),
-        child: InkWell(
-          key: const ValueKey('day-selector'),
-          onTap: dayMenu,
-          borderRadius: BorderRadius.circular(AppPalette.of(context).radius),
-          child: Semantics(
-            button: true,
-            label: 'Выбрать день',
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      Container(
+        key: const ValueKey('day-selector'),
+        padding: EdgeInsets.all(c.strict ? 0 : 3),
+        decoration: BoxDecoration(
+          color: c.editorial ? null : c.sand,
+          borderRadius: BorderRadius.circular(c.lined ? 4 : 14),
+          border: c.lined ? Border.all(color: c.line) : null,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: dateTab(
+                label: 'Сегодня',
+                key: const ValueKey('today'),
+                selected: isToday,
+                onTap: () => selectDay(today),
+              ),
+            ),
+            if (!c.strict) const SizedBox(width: 4),
+            Expanded(
+              child: dateTab(
+                label: 'Завтра',
+                key: const ValueKey('tomorrow'),
+                selected: planner.selected == tomorrow,
+                onTap: () => selectDay(tomorrow),
+              ),
+            ),
+            if (!c.strict) const SizedBox(width: 4),
+            SizedBox(
+              width: 53,
+              child: dateTab(
+                key: const ValueKey('choose-date'),
+                selected: otherDate,
+                onTap: chooseDate,
+              ),
+            ),
+          ],
+        ),
+      ),
+      DesignHeader(
+        eyebrow: DateFormat(
+          'EEEE, d MMMM',
+          'ru',
+        ).format(planner.selected).toUpperCase(),
+        title: isToday ? headline : 'Новый день',
+        subtitle: subhead,
+        day: true,
+        mark: c.design == AppDesign.warm
+            ? const DesignIcon(
+                DesignSymbol.sun,
+                size: 29,
+                color: Color(0xFFD7A76C),
+              )
+            : null,
+      ),
+      if (c.playful)
+        Transform.rotate(angle: -.0174533, child: progress)
+      else
+        progress,
+      const SizedBox(height: 18),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(2, 0, 2, 11),
+        child: PopupMenuButton<int>(
+          tooltip: 'Фильтр задач',
+          initialValue: filter,
+          onSelected: (value) => setState(() => filter = value),
+          itemBuilder: (_) => [
+            for (final (index, label) in [
+              'Все',
+              'В процессе',
+              'Готово',
+            ].indexed)
+              PopupMenuItem(value: index, child: Text(label)),
+          ],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  switch (filter) {
+                    1 => 'В ПРОЦЕССЕ',
+                    2 => 'ГОТОВО',
+                    _ => c.strict ? 'ЗАДАЧИ' : 'Мои задачи',
+                  },
+                  style: designText(
+                    c.strict
+                        ? 10
+                        : c.editorial
+                        ? 14
+                        : 13,
+                    weight: c.editorial ? 400 : 550,
+                    spacing: c.strict ? 1 : 0,
+                    font: c.editorial ? 'Literata' : 'Golos Text',
+                  ),
+                ),
+              ),
+              Text(
+                visible.length.toString().padLeft(2, '0'),
+                style: designText(10, color: c.muted, font: 'DM Sans'),
+              ),
+            ],
+          ),
+        ),
+      ),
+      if (visible.isEmpty)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(0, 30, 0, 36),
+          child: Column(
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: c.cream,
+                  borderRadius: BorderRadius.circular(45),
+                ),
+                alignment: Alignment.center,
+                child: const DesignIcon(
+                  DesignSymbol.sun,
+                  size: 56,
+                  color: Color(0xFFC6A06F),
+                ),
+              ),
+              const SizedBox(height: 21),
+              Text(
+                tasks.isEmpty
+                    ? 'День — чистый лист'
+                    : 'В этом фильтре пока нет задач.',
+                textAlign: TextAlign.center,
+                style: designText(18, weight: 500),
+              ),
+              if (tasks.isEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Никакой спешки. Добавьте то,\nчто действительно важно.',
+                  textAlign: TextAlign.center,
+                  style: designText(12, height: 1.8, color: c.muted),
+                ),
+              ],
+            ],
+          ),
+        )
+      else
+        AnimatedTaskList(
+          key: ValueKey('day-tasks-${dayKey(planner.selected)}-$filter'),
+          tasks: visible,
+          busy: planner.busy,
+          onToggle: (task) =>
+              attempt(() => planner.save(task.copyWith(done: !task.done))),
+          onEdit: edit,
+          onDelete: delete,
+        ),
+      SizedBox(
+        height: quickOpen
+            ? 12
+            : c.strict
+            ? 20
+            : c.editorial
+            ? 19
+            : 10,
+      ),
+      if (!quickOpen)
+        DesignButton(
+          key: const ValueKey('quick-open'),
+          label: 'Добавить задачу',
+          icon: DesignSymbol.plus,
+          onPressed: planner.busy
+              ? null
+              : () {
+                  setState(() => quickOpen = true);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted && quickOpen) draftFocus.requestFocus();
+                  });
+                },
+        )
+      else
+        TextFieldTapRegion(
+          key: const ValueKey('quick-entry'),
+          child: Container(
+            decoration: BoxDecoration(
+              color: c.cream,
+              border: Border.all(color: c.accent),
+              borderRadius: BorderRadius.circular(c.radius),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: IntrinsicHeight(
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const DesignIcon(DesignSymbol.calendar, size: 22),
-                  const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isToday
-                              ? 'Сегодня'
-                              : planner.selected == nextDay(planner.today)
-                              ? 'Завтра'
-                              : 'Выбранный день',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                    child: TextField(
+                      key: const ValueKey('quick-task'),
+                      controller: draft,
+                      readOnly: planner.busy,
+                      focusNode: draftFocus,
+                      maxLength: 200,
+                      textCapitalization: TextCapitalization.sentences,
+                      onEditingComplete: () {},
+                      onSubmitted: (_) => planner.busy ? null : add(),
+                      textInputAction: TextInputAction.done,
+                      style: designText(13),
+                      decoration: const InputDecoration(
+                        hintText: 'Что нужно сделать?',
+                        counterText: '',
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 13,
+                          vertical: 14,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${dateText[0].toUpperCase()}${dateText.substring(1)}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppPalette.of(context).inkOpacity(.55),
-                          ),
-                        ),
-                      ],
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const RotatedBox(
-                    quarterTurns: 1,
-                    child: DesignIcon(DesignSymbol.chevron, size: 18),
+                  Material(
+                    color: c.accent,
+                    child: InkWell(
+                      key: const ValueKey('quick-add'),
+                      onTap: planner.busy ? null : add,
+                      child: Semantics(
+                        button: true,
+                        label: 'Добавить задачу',
+                        child: SizedBox(
+                          width: 48,
+                          height: 49,
+                          child: Center(
+                            child: DesignIcon(
+                              DesignSymbol.arrow,
+                              color: c.dark ? c.paper : c.ink,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
         ),
-      ),
-      const SizedBox(height: 12),
-      Row(
-        children: [
-          Expanded(child: Text(title, style: pageHeading(context))),
-          IconButton(
-            tooltip: 'Будущие планы',
-            onPressed: showPlans,
-            icon: const Icon(Icons.event_note),
-          ),
-        ],
-      ),
-      const SizedBox(height: 8),
-      Container(
-        key: const ValueKey('day-progress'),
-        padding: EdgeInsets.symmetric(
-          horizontal: colors.design == AppDesign.editorial ? 0 : 16,
-          vertical: 12,
-        ),
-        decoration: colors.panel(
-          color: colors.hero,
-          flat: colors.design == AppDesign.editorial,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Выполнено $done из ${tasks.length}',
-                    style: TextStyle(fontSize: 14, color: colors.onHero),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '$percent%',
-                  style: colors.heading.copyWith(
-                    fontSize: 18,
-                    color: colors.design == AppDesign.strict
-                        ? colors.accent
-                        : colors.strong,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(colors.lined ? 1 : 8),
-              child: LinearProgressIndicator(
-                value: tasks.isEmpty ? 0 : done / tasks.length,
-                minHeight: colors.playful ? 7 : 4,
-                color: colors.heroAccent,
-                backgroundColor: colors.onHero.withValues(alpha: .12),
-                semanticsLabel: 'Выполнено $percent процентов',
-              ),
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 12),
-      Row(
-        children: [
-          Expanded(
-            child: PopupMenuButton<int>(
-              tooltip: 'Фильтр задач',
-              initialValue: filter,
-              onSelected: (value) => setState(() => filter = value),
-              itemBuilder: (_) => [
-                for (final (index, label) in [
-                  'Все',
-                  'В процессе',
-                  'Готово',
-                ].indexed)
-                  PopupMenuItem(value: index, child: Text(label)),
-              ],
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 48),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    filter == 0
-                        ? 'ЗАДАЧИ'
-                        : filter == 1
-                        ? 'В ПРОЦЕССЕ'
-                        : 'ГОТОВО',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppPalette.of(context).inkOpacity(.7),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 12),
-      if (visible.isEmpty)
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 32),
-          child: Text(
-            tasks.isEmpty
-                ? 'Пока пусто. Запланируй свой день.'
-                : 'В этом фильтре пока нет задач.',
-            textAlign: TextAlign.center,
-            style: captionStyle(context, .45),
-          ),
-        ),
-      AnimatedTaskList(
-        key: ValueKey('day-tasks-${dayKey(planner.selected)}-$filter'),
-        tasks: visible,
-        busy: planner.busy,
-        onToggle: (task) =>
-            attempt(() => planner.save(task.copyWith(done: !task.done))),
-        onEdit: edit,
-        onDelete: delete,
-      ),
-      const SizedBox(height: 12),
-      TextFieldTapRegion(
-        key: const ValueKey('quick-entry'),
-        child: CustomPaint(
-          painter: _DashedBorder(
-            focused: draftFocus.hasFocus,
-            color: draftFocus.hasFocus
-                ? AppPalette.of(context).cream
-                : AppPalette.of(context).inkOpacity(.2),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 8, 8, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    key: const ValueKey('quick-task'),
-                    controller: draft,
-                    readOnly: planner.busy,
-                    focusNode: draftFocus,
-                    maxLength: 200,
-                    textCapitalization: TextCapitalization.sentences,
-                    onEditingComplete: () {},
-                    onSubmitted: (_) => planner.busy ? null : add(),
-                    onTap: () => setState(() {}),
-                    onTapOutside: (_) {
-                      draftFocus.unfocus();
-                      setState(() {});
-                    },
-                    textInputAction: TextInputAction.done,
-                    style: const TextStyle(fontSize: 15, height: 1.5),
-                    decoration: InputDecoration(
-                      hintText: 'Новая задача…',
-                      counterText: '',
-                      hintStyle: TextStyle(
-                        color: AppPalette.of(context).inkOpacity(.45),
-                      ),
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Tooltip(
-                  message: 'Добавить',
-                  child: Semantics(
-                    button: true,
-                    label: 'Добавить задачу',
-                    child: InkWell(
-                      key: const ValueKey('quick-add'),
-                      onTap: planner.busy ? null : add,
-                      child: Container(
-                        width: 48,
-                        height: 48,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: AppPalette.of(context).action,
-                          borderRadius: BorderRadius.circular(
-                            AppPalette.of(context).radius,
-                          ),
-                        ),
-                        child: DesignIcon(
-                          DesignSymbol.plus,
-                          color: AppPalette.of(context).onAction,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
       if (draftError != null)
         Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Text(
             draftError!,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.error,
-              fontSize: 12,
-            ),
+            style: designText(12, color: Theme.of(context).colorScheme.error),
           ),
         ),
-      const SizedBox(height: 12),
-      if (!planner.selected.isAfter(planner.today))
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            key: const ValueKey('move-unfinished'),
-            onPressed: planner.busy || !tasks.any((t) => !t.done)
-                ? null
-                : copyUnfinished,
-            icon: const Icon(Icons.forward),
-            label: Text(
-              'Скопировать незавершённые на завтра (${tasks.where((t) => !t.done).length})',
-            ),
-          ),
-        ),
-      const SizedBox(height: 24),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          DesignIcon(
-            DesignSymbol.moon,
-            size: 16,
-            color: AppPalette.of(context).inkOpacity(.45),
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              isToday
-                  ? 'После полуночи карточка уйдёт в архив'
-                  : 'План на ${DateFormat('d MMMM', 'ru').format(planner.selected)}',
-              style: TextStyle(
-                fontSize: 12,
-                height: 16 / 12,
-                color: AppPalette.of(context).inkOpacity(.45),
+      SizedBox(height: c.playful ? 14 : 16),
+      InkWell(
+        key: const ValueKey('move-unfinished'),
+        onTap: planner.busy || planner.selected.isAfter(today)
+            ? null
+            : () {
+                if (done == tasks.length) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Нет незавершённых задач')),
+                  );
+                } else {
+                  copyUnfinished();
+                }
+              },
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              DesignIcon(DesignSymbol.copy, size: 17, color: c.muted),
+              const SizedBox(width: 7),
+              Flexible(
+                child: Text(
+                  'Скопировать незавершённые на завтра',
+                  textAlign: TextAlign.center,
+                  style: designText(11, color: c.muted),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
+      ),
+      const SizedBox(height: 5),
+      InkWell(
+        onTap: showPlans,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.only(top: 8),
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: c.line)),
+          ),
+          child: Row(
+            children: [
+              Expanded(child: Text('Будущие планы', style: designText(13))),
+              const DesignIcon(DesignSymbol.arrow, size: 18),
+            ],
+          ),
+        ),
       ),
     ];
   }
-}
 
-class _DashedBorder extends CustomPainter {
-  const _DashedBorder({required this.focused, required this.color});
-
-  final Color color;
-
-  final bool focused;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final path = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          (Offset.zero & size).deflate(1),
-          const Radius.circular(16),
+  Widget dateTab({
+    required Key key,
+    String? label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final c = AppPalette.of(context);
+    final ink = selected ? (c.lined ? c.paper : c.ink) : c.muted;
+    final radius = BorderRadius.circular(
+      c.strict
+          ? 3
+          : c.editorial
+          ? 2
+          : label == null
+          ? 0
+          : 10,
+    );
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: label == null ? 'Выбрать дату в календаре' : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: selected ? (c.lined ? c.ink : c.card) : null,
+          borderRadius: radius,
+          boxShadow: selected && !c.lined
+              ? const [
+                  BoxShadow(
+                    color: Color(0x05000000),
+                    offset: Offset(0, 2),
+                    blurRadius: 5,
+                  ),
+                ]
+              : null,
         ),
-      );
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..color = color;
-    for (final metric in path.computeMetrics()) {
-      for (double start = 0; start < metric.length; start += 10) {
-        canvas.drawPath(metric.extractPath(start, start + 5), paint);
-      }
-    }
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            key: key,
+            onTap: onTap,
+            borderRadius: radius,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 48),
+              alignment: Alignment.center,
+              decoration: label == null
+                  ? BoxDecoration(
+                      border: Border(left: BorderSide(color: c.line)),
+                    )
+                  : null,
+              child: label == null
+                  ? DesignIcon(DesignSymbol.calendar, size: 21, color: ink)
+                  : Text(
+                      label,
+                      style: designText(
+                        13,
+                        color: ink,
+                        weight: selected ? 550 : 400,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
-
-  @override
-  bool shouldRepaint(_DashedBorder old) =>
-      old.focused != focused || old.color != color;
 }
 
-// Full-width tabs retain native gesture arbitration and boundary handling.
-// A deliberate slow drag needs 35% of a page; lighter flicks also advance.
 class _TabScrollPhysics extends PageScrollPhysics {
   const _TabScrollPhysics({super.parent});
 

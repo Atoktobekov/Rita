@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/calendar.dart';
 import '../../domain/entities/task.dart';
+import '../theme/palette.dart';
+import 'design_icon.dart';
+import 'reference_widgets.dart';
 
 Future<DateTime?> pickDay(BuildContext context, DateTime current) =>
     showDatePicker(
@@ -71,51 +74,36 @@ class _TaskEditorState extends State<TaskEditor> {
   }
 
   @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: !saving,
-    child: AbsorbPointer(
-      absorbing: saving,
-      child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          16,
-          20,
-          MediaQuery.viewInsetsOf(context).bottom + 24,
-        ),
+  Widget build(BuildContext context) {
+    final c = AppPalette.of(context);
+    return PopScope(
+      canPop: !saving,
+      child: AbsorbPointer(
+        absorbing: saving,
         child: Form(
           key: form,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: DesignSheet(
+            title: widget.task == null
+                ? 'Новая задача'
+                : 'Редактировать задачу',
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      widget.task == null
-                          ? 'Новая задача'
-                          : 'Редактировать задачу',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Закрыть',
-                    onPressed: saving ? null : () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 11),
+              Text('Название задачи', style: designText(11, color: c.muted)),
+              const SizedBox(height: 9),
               TextFormField(
                 controller: title,
-                autofocus: true,
                 maxLength: 200,
-                minLines: 1,
+                minLines: 3,
                 maxLines: 3,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'Что нужно сделать?',
-                  hintText: 'Например, прочитать 10 страниц',
+                style: designText(15, height: 1.7),
+                decoration: InputDecoration(
+                  counterText: '',
+                  filled: true,
+                  fillColor: c.card,
+                  contentPadding: const EdgeInsets.all(15),
+                  border: dateFieldBorder(c),
+                  enabledBorder: dateFieldBorder(c),
                 ),
                 validator: (value) => value == null || value.trim().isEmpty
                     ? 'Напиши название задачи'
@@ -123,17 +111,17 @@ class _TaskEditorState extends State<TaskEditor> {
                     ? 'Не больше 200 символов'
                     : null,
               ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                key: const ValueKey('editor-date'),
-                icon: const Icon(Icons.calendar_today_outlined),
-                label: Text(DateFormat('d MMMM yyyy', 'ru').format(day)),
-                onPressed: () async {
-                  final picked = await pickDay(context, day);
-                  if (picked != null && mounted) setState(() => day = picked);
-                },
+              const SizedBox(height: 20),
+              DateField(
+                day: day,
+                fieldKey: const ValueKey('editor-date'),
+                onChanged: (picked) => setState(() => day = picked),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
+              Text(
+                'Без спешки. План всегда можно изменить.',
+                style: designText(12, height: 1.8, color: c.muted),
+              ),
               if (error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
@@ -141,30 +129,126 @@ class _TaskEditorState extends State<TaskEditor> {
                     liveRegion: true,
                     child: Text(
                       error!,
-                      style: TextStyle(
+                      style: designText(
+                        12,
                         color: Theme.of(context).colorScheme.error,
                       ),
                     ),
                   ),
                 ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: saving ? null : save,
-                  child: Text(
-                    saving
-                        ? 'Сохранение…'
-                        : widget.task == null
-                        ? 'Добавить задачу'
-                        : 'Сохранить изменения',
-                  ),
-                ),
+              const SizedBox(height: 26),
+              DesignButton(
+                primary: true,
+                label: saving
+                    ? 'Сохранение…'
+                    : widget.task == null
+                    ? 'Добавить задачу'
+                    : 'Сохранить изменения',
+                icon: DesignSymbol.check,
+                onPressed: saving ? null : save,
               ),
             ],
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
+}
+
+OutlineInputBorder dateFieldBorder(AppPalette c) => OutlineInputBorder(
+  borderRadius: BorderRadius.circular(12),
+  borderSide: BorderSide(color: c.line),
+);
+
+class DateField extends StatelessWidget {
+  const DateField({
+    super.key,
+    this.fieldKey,
+    required this.day,
+    required this.onChanged,
+  });
+
+  final Key? fieldKey;
+  final DateTime day;
+  final ValueChanged<DateTime> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppPalette.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Дата', style: designText(11, color: c.muted)),
+        const SizedBox(height: 9),
+        Material(
+          color: c.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: c.line),
+          ),
+          child: InkWell(
+            key: fieldKey,
+            borderRadius: BorderRadius.circular(12),
+            onTap: () async {
+              final picked = await pickDay(context, day);
+              if (picked != null && context.mounted) onChanged(picked);
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(15),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      DateFormat('dd.MM.yyyy').format(day),
+                      style: designText(15, height: 1.7),
+                    ),
+                  ),
+                  DesignIcon(DesignSymbol.calendar, size: 18, color: c.muted),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class CalendarSheet extends StatefulWidget {
+  const CalendarSheet({super.key, required this.initialDate});
+  final DateTime initialDate;
+
+  @override
+  State<CalendarSheet> createState() => _CalendarSheetState();
+}
+
+class _CalendarSheetState extends State<CalendarSheet> {
+  late DateTime day = widget.initialDate;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppPalette.of(context);
+    return DesignSheet(
+      title: 'Выберите день',
+      children: [
+        Text(
+          'Планы на любой день — в одном месте.',
+          style: designText(12, height: 1.8, color: c.muted),
+        ),
+        const SizedBox(height: 23),
+        DateField(
+          fieldKey: const ValueKey('calendar-date'),
+          day: day,
+          onChanged: (picked) => setState(() => day = picked),
+        ),
+        const SizedBox(height: 23),
+        DesignButton(
+          primary: true,
+          label: 'Открыть день',
+          icon: DesignSymbol.arrow,
+          onPressed: () => Navigator.pop(context, day),
+        ),
+      ],
+    );
+  }
 }

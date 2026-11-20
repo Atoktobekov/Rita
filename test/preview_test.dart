@@ -23,6 +23,7 @@ void main() {
       await tester.runAsync(() async {
         for (final (family, path) in [
           ('Golos Text', 'assets/fonts/GolosText.ttf'),
+          ('DM Sans', 'assets/fonts/DMSans.ttf'),
           ('Literata', 'assets/fonts/Literata.ttf'),
           ('MaterialIcons', 'fonts/MaterialIcons-Regular.otf'),
         ]) {
@@ -32,7 +33,7 @@ void main() {
       final repository = MemoryTaskRepository()..tasks.addAll(figmaFixture());
       final planner = PlannerController(
         ManageTasks(repository),
-        clock: () => DateTime(2025, 1, 15),
+        clock: () => DateTime(2026, 6, 18),
       );
       final reminder = ReminderController(
         ManageReminder(MemoryReminderRepository(), FakeScheduler()),
@@ -105,6 +106,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('nav-section-2')));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Настройки'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Дизайн приложения'));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.byKey(const ValueKey('design-editorial')),

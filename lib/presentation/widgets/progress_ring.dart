@@ -12,6 +12,8 @@ class ProgressRing extends StatelessWidget {
     this.child,
     this.color,
     this.textColor,
+    this.trackColor,
+    this.rounded = true,
   });
 
   final int percent;
@@ -21,6 +23,8 @@ class ProgressRing extends StatelessWidget {
   final Widget? child;
   final Color? color;
   final Color? textColor;
+  final Color? trackColor;
+  final bool rounded;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -32,6 +36,8 @@ class ProgressRing extends StatelessWidget {
           percent / 100,
           stroke,
           color ?? AppPalette.of(context).strong,
+          trackColor,
+          rounded,
         ),
         child: Center(
           child:
@@ -51,7 +57,16 @@ class ProgressRing extends StatelessWidget {
 }
 
 class _RingPainter extends CustomPainter {
-  const _RingPainter(this.value, this.stroke, this.color);
+  const _RingPainter(
+    this.value,
+    this.stroke,
+    this.color,
+    this.trackColor,
+    this.rounded,
+  );
+
+  final Color? trackColor;
+  final bool rounded;
 
   final Color color;
   final double value;
@@ -63,7 +78,10 @@ class _RingPainter extends CustomPainter {
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke;
-    canvas.drawOval(rect, paint..color = color.withValues(alpha: .12));
+    canvas.drawOval(
+      rect,
+      paint..color = trackColor ?? color.withValues(alpha: .12),
+    );
     if (value > 0) {
       canvas.drawArc(
         rect,
@@ -72,12 +90,16 @@ class _RingPainter extends CustomPainter {
         false,
         paint
           ..color = color
-          ..strokeCap = StrokeCap.round,
+          ..strokeCap = rounded ? StrokeCap.round : StrokeCap.butt,
       );
     }
   }
 
   @override
   bool shouldRepaint(_RingPainter old) =>
-      value != old.value || stroke != old.stroke || color != old.color;
+      value != old.value ||
+      stroke != old.stroke ||
+      color != old.color ||
+      trackColor != old.trackColor ||
+      rounded != old.rounded;
 }

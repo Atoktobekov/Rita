@@ -7,6 +7,7 @@ import 'package:daily_todo/domain/usecases/manage_reminder.dart';
 import 'package:daily_todo/presentation/controllers/planner_controller.dart';
 import 'package:daily_todo/presentation/controllers/reminder_controller.dart';
 import 'package:daily_todo/presentation/widgets/task_editor.dart';
+import 'package:daily_todo/presentation/widgets/reference_widgets.dart';
 import 'support/fakes.dart';
 
 void main() {
@@ -227,7 +228,11 @@ void main() {
       await tester.tap(tab(2));
       await tester.pumpAndSettle();
       final day = find.byKey(const ValueKey('chart-day-2027-01-01'));
-      await tester.ensureVisible(day);
+      await tester.drag(
+        find.byKey(const PageStorageKey('tab-scroll-2')),
+        const Offset(0, -220),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(day);
       await tester.pumpAndSettle();
       expect(
@@ -264,7 +269,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('day-details-add')));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField), 'Добавлено в прошлое');
-      final save = find.widgetWithText(FilledButton, 'Добавить задачу');
+      final save = find.widgetWithText(DesignButton, 'Добавить задачу').last;
       await tester.ensureVisible(save);
       await tester.tap(save);
       await tester.pumpAndSettle();
