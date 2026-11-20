@@ -41,7 +41,13 @@ void main() {
 
   Future<void> reveal(WidgetTester tester, Finder finder) async {
     if (finder.evaluate().isEmpty) {
-      final scrollable = find.byType(Scrollable).first;
+      final scrollable = find
+          .byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          )
+          .first;
       tester.state<ScrollableState>(scrollable).position.jumpTo(0);
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(finder, 200, scrollable: scrollable);
@@ -200,7 +206,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(planner.tasks.single.done, true);
-      await tester.tap(find.text('Прочитать 10 страниц'));
+      await tester.longPress(find.text('Прочитать 10 страниц'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('task-edit')));
       await tester.pumpAndSettle();
       await tester.enterText(
         find.byType(TextFormField),
@@ -209,7 +217,9 @@ void main() {
       await reveal(tester, find.text('Сохранить изменения'));
       await tester.tap(find.text('Сохранить изменения'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Удалить'));
+      await tester.longPress(find.text('Прочитать 20 страниц'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('task-delete')));
       await tester.pumpAndSettle();
       expect(planner.tasks, isEmpty);
       await tester.tap(find.text('Отменить'));
@@ -233,7 +243,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(dayKey(planner.selected), '2026-12-15');
     await quickAdd(tester, 'На другую дату');
-    await tester.tap(find.text('На другую дату'));
+    await tester.longPress(find.text('На другую дату'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('task-edit')));
     await tester.pumpAndSettle();
     await reveal(tester, find.byKey(const ValueKey('editor-date')));
     await tester.tap(find.byKey(const ValueKey('editor-date')));
@@ -274,13 +286,26 @@ void main() {
       expect(find.text('Последние 6 дней'), findsOneWidget);
       await tester.tap(find.text('Ачивки'));
       await tester.pumpAndSettle();
-      expect(find.text('Открыто 0 из 11'), findsOneWidget);
+      expect(find.text('Открыто 0 из 13'), findsOneWidget);
       await tester.tap(find.text('Сегодня').last);
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('reminder-switch')), findsNothing);
       await tester.tap(find.text('Статистика'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Настройки'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Вечернее напоминание'),
+        180,
+        scrollable: find
+            .byWidgetPredicate(
+              (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+            )
+            .last,
+      );
+      await tester.ensureVisible(
+        find.widgetWithText(ListTile, 'Вечернее напоминание'),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Вечернее напоминание'));
       await tester.pumpAndSettle();

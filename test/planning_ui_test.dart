@@ -65,7 +65,13 @@ void main() {
 
   Future<void> reveal(WidgetTester tester, Finder finder) async {
     if (finder.evaluate().isEmpty) {
-      final scrollable = find.byType(Scrollable).first;
+      final scrollable = find
+          .byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          )
+          .first;
       tester.state<ScrollableState>(scrollable).position.jumpTo(0);
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(finder, 200, scrollable: scrollable);
@@ -92,7 +98,10 @@ void main() {
         ),
       );
       await open(tester);
-      await tapVisible(tester, find.text('Исходная задача'));
+      await reveal(tester, find.text('Исходная задача'));
+      await tester.longPress(find.text('Исходная задача'));
+      await tester.pumpAndSettle();
+      await tapVisible(tester, find.byKey(const ValueKey('task-edit')));
       await tester.enterText(find.byType(TextFormField), 'Исправленный текст');
       expect(find.byType(ChoiceChip), findsNothing);
       repository.fail = true;
@@ -147,7 +156,8 @@ void main() {
         ),
       );
       await tapVisible(tester, find.byKey(const ValueKey('move-unfinished')));
-      expect(planner.tasks.every((t) => t.day == '2027-01-01'), true);
+      expect(planner.tasks.where((t) => t.day == '2027-01-01'), hasLength(2));
+      expect(planner.tasks.where((t) => t.day == '2026-12-31'), hasLength(2));
       await tapVisible(tester, find.text('Отменить'));
       expect(planner.tasks.every((t) => t.day == '2026-12-31'), true);
       await tapVisible(tester, find.byKey(const ValueKey('move-unfinished')));
@@ -228,9 +238,17 @@ void main() {
     final size = tester.getSize(find.byKey(const ValueKey('check-a')));
     expect(size.width, greaterThanOrEqualTo(48));
     expect(size.height, greaterThanOrEqualTo(48));
-    final deleteSize = tester.getSize(find.byTooltip('Удалить'));
+    await tester.longPress(find.byKey(const ValueKey('check-a')));
+    await tester.pumpAndSettle();
+    final deleteSize = tester.getSize(
+      find.byKey(const ValueKey('task-delete')),
+    );
     expect(deleteSize.width, greaterThanOrEqualTo(48));
     expect(deleteSize.height, greaterThanOrEqualTo(48));
+    Navigator.of(
+      tester.element(find.byKey(const ValueKey('task-delete'))),
+    ).pop();
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     for (final tab in ['Архив', 'Статистика', 'Ачивки', 'Сегодня']) {
       await tester.tap(find.text(tab).last);

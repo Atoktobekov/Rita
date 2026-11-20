@@ -6,30 +6,19 @@ import '../../domain/usecases/task_statistics.dart';
 import '../theme/palette.dart';
 import '../widgets/design_icon.dart';
 import '../widgets/progress_ring.dart';
-import '../widgets/task_card.dart';
+import '../widgets/animated_task_list.dart';
 
-const pageHeading = TextStyle(
-  fontSize: 34,
-  height: 1.25,
-  fontWeight: FontWeight.w400,
-);
+TextStyle pageHeading(BuildContext context) => AppPalette.of(context).heading;
 
 TextStyle captionStyle(BuildContext context, [double opacity = .55]) =>
     TextStyle(
       fontSize: 14,
       height: 20 / 14,
-      color: AppPalette.of(context).inkOpacity(opacity),
+      color: AppPalette.of(context).muted,
     );
 
-BoxDecoration softCard(
-  BuildContext context, {
-  double radius = 24,
-  Color? color,
-}) => BoxDecoration(
-  color: color ?? AppPalette.of(context).card,
-  borderRadius: BorderRadius.circular(radius),
-  border: Border.all(color: AppPalette.of(context).inkOpacity(.05)),
-);
+BoxDecoration softCard(BuildContext context, {Color? color}) =>
+    AppPalette.of(context).panel(color: color);
 
 class ArchiveView extends StatefulWidget {
   const ArchiveView({
@@ -39,6 +28,7 @@ class ArchiveView extends StatefulWidget {
     required this.today,
     required this.onToggle,
     required this.onEdit,
+    required this.onDelete,
     required this.onOpenDay,
     required this.onChooseDate,
     this.busy = false,
@@ -52,6 +42,7 @@ class ArchiveView extends StatefulWidget {
   final DateTime today;
   final ValueChanged<Task> onToggle;
   final ValueChanged<Task> onEdit;
+  final ValueChanged<Task> onDelete;
   final ValueChanged<DateTime> onOpenDay;
   final VoidCallback onChooseDate;
 
@@ -68,7 +59,7 @@ class _ArchiveViewState extends State<ArchiveView> {
     children: [
       Row(
         children: [
-          const Expanded(child: Text('Архив', style: pageHeading)),
+          Expanded(child: Text('Архив', style: pageHeading(context))),
           IconButton(
             tooltip: 'Копии задач',
             onPressed: widget.onBackups,
@@ -102,7 +93,9 @@ class _ArchiveViewState extends State<ArchiveView> {
               widget.today.day - 1,
             );
             return Container(
-              decoration: softCard(context),
+              decoration: AppPalette.of(
+                context,
+              ).panel(flat: AppPalette.of(context).lined),
               clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
@@ -124,7 +117,9 @@ class _ArchiveViewState extends State<ArchiveView> {
                                 AppPalette.of(context).ink,
                                 (percent * .85).round() / 100,
                               ),
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(
+                                AppPalette.of(context).radius,
+                              ),
                             ),
                             child: Text(
                               '$percent%',
@@ -188,60 +183,14 @@ class _ArchiveViewState extends State<ArchiveView> {
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       child: Column(
                         children: [
-                          for (final task in tasks)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Row(
-                                children: [
-                                  TaskCheck(
-                                    size: 20,
-                                    title: task.title,
-                                    done: task.done,
-                                    onTap: widget.busy
-                                        ? null
-                                        : () => widget.onToggle(task),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: widget.busy
-                                          ? null
-                                          : () => widget.onEdit(task),
-                                      child: ConstrainedBox(
-                                        constraints: const BoxConstraints(
-                                          minHeight: 48,
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Text(
-                                              task.title,
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                height: 20 / 14,
-                                                color: task.done
-                                                    ? AppPalette.of(
-                                                        context,
-                                                      ).inkOpacity(.65)
-                                                    : AppPalette.of(
-                                                        context,
-                                                      ).ink,
-                                                decoration: task.done
-                                                    ? TextDecoration.lineThrough
-                                                    : null,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          AnimatedTaskList(
+                            key: ValueKey('archive-tasks-$day'),
+                            tasks: tasks,
+                            busy: widget.busy,
+                            onToggle: widget.onToggle,
+                            onEdit: widget.onEdit,
+                            onDelete: widget.onDelete,
+                          ),
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
@@ -277,6 +226,7 @@ class StatisticsView extends StatelessWidget {
     required this.today,
     required this.mode,
     required this.onModeChanged,
+    required this.onOpenDay,
     this.onSettings,
   });
 
@@ -285,9 +235,11 @@ class StatisticsView extends StatelessWidget {
   final DateTime today;
   final StatisticsMode mode;
   final ValueChanged<StatisticsMode> onModeChanged;
+  final ValueChanged<DateTime> onOpenDay;
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppPalette.of(context);
     final stats = statistics;
     final showCount = mode == StatisticsMode.count;
     final compact = MediaQuery.sizeOf(context).width < 360;
@@ -302,7 +254,12 @@ class StatisticsView extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: Text('Статистика', style: pageHeading.copyWith(fontSize: 28))),
+            Expanded(
+              child: Text(
+                'Статистика',
+                style: pageHeading(context).copyWith(fontSize: 28),
+              ),
+            ),
             IconButton(
               tooltip: 'Настройки',
               onPressed: onSettings,
@@ -315,7 +272,9 @@ class StatisticsView extends StatelessWidget {
               onSelected: onModeChanged,
               color: AppPalette.of(context).card,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(
+                  AppPalette.of(context).radius,
+                ),
               ),
               icon: Container(
                 width: 40,
@@ -377,11 +336,7 @@ class StatisticsView extends StatelessWidget {
         const SizedBox(height: 16),
         Container(
           padding: EdgeInsets.all(compact ? 16 : 24),
-          decoration: BoxDecoration(
-            color: AppPalette.of(context).cream,
-            border: Border.all(color: AppPalette.of(context).inkOpacity(.1)),
-            borderRadius: BorderRadius.circular(28),
-          ),
+          decoration: colors.panel(color: colors.hero),
           child: Row(
             children: [
               ProgressRing(
@@ -389,20 +344,26 @@ class StatisticsView extends StatelessWidget {
                 size: 116,
                 stroke: 12,
                 fontSize: 30,
+                color: colors.heroAccent,
+                textColor: colors.onHero,
                 child: showCount
                     ? Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
                             '${stats.completed}',
-                            style: const TextStyle(fontSize: 30, height: 1),
+                            style: colors.heading.copyWith(
+                              fontSize: 30,
+                              height: 1,
+                              color: colors.onHero,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             'из ${stats.total}',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppPalette.of(context).inkOpacity(.55),
+                              color: colors.onHero.withValues(alpha: .8),
                             ),
                           ),
                         ],
@@ -416,14 +377,21 @@ class StatisticsView extends StatelessWidget {
                   children: [
                     Text(
                       showCount ? 'Выполнено задач' : 'Процент выполнения',
-                      style: captionStyle(context, .65),
+                      style: captionStyle(
+                        context,
+                        .65,
+                      ).copyWith(color: colors.onHero.withValues(alpha: .85)),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       stats.percent >= 70
                           ? 'Отличный темп!'
                           : 'Есть куда расти',
-                      style: const TextStyle(fontSize: 20, height: 1.375),
+                      style: colors.heading.copyWith(
+                        fontSize: 20,
+                        height: 1.375,
+                        color: colors.onHero,
+                      ),
                     ),
                   ],
                 ),
@@ -439,7 +407,12 @@ class StatisticsView extends StatelessWidget {
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(20),
-                  decoration: softCard(context),
+                  decoration: colors.panel(
+                    flat: colors.design == AppDesign.editorial,
+                    color: colors.playful
+                        ? (i == 0 ? colors.positive : colors.celebration)
+                        : colors.card,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -449,7 +422,7 @@ class StatisticsView extends StatelessWidget {
                           fontSize: 12,
                           height: 16 / 12,
                           fontWeight: FontWeight.w600,
-                          color: AppPalette.of(context).inkOpacity(.5),
+                          color: AppPalette.of(context).muted,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -459,7 +432,10 @@ class StatisticsView extends StatelessWidget {
                             : showCount
                             ? '${stats.completed}'
                             : '${stats.percent}%',
-                        style: const TextStyle(fontSize: 36, height: 1.11),
+                        style: colors.heading.copyWith(
+                          fontSize: 36,
+                          height: 1.11,
+                        ),
                       ),
                     ],
                   ),
@@ -471,7 +447,7 @@ class StatisticsView extends StatelessWidget {
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(20),
-          decoration: softCard(context),
+          decoration: colors.panel(flat: colors.design == AppDesign.editorial),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -485,62 +461,78 @@ class StatisticsView extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               SizedBox(
-                height: 114 + MediaQuery.textScalerOf(context).scale(10) * 3,
+                height: 114 + MediaQuery.textScalerOf(context).scale(10) * 6,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     for (final (i, day) in days.indexed) ...[
                       if (i > 0) const SizedBox(width: 8),
                       Expanded(
-                        child: Semantics(
-                          label:
-                              '${DateFormat('d MMMM', 'ru').format(day.day)}: ${day.completed} из ${day.total}',
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                showCount
-                                    ? '${day.completed}'
-                                    : '${(day.ratio * 100).round()}%',
-                                key: ValueKey('chart-value-${dayKey(day.day)}'),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  height: 1.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppPalette.of(context).inkOpacity(.6),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              AnimatedContainer(
-                                key: ValueKey('chart-bar-${dayKey(day.day)}'),
-                                duration: const Duration(milliseconds: 500),
-                                height:
-                                    98 *
-                                    (showCount
-                                            ? day.completed / maximum
-                                            : day.ratio)
-                                        .clamp(.04, 1.0),
-                                decoration: BoxDecoration(
-                                  color: dayKey(day.day) == dayKey(today)
-                                      ? AppPalette.of(context).ink
-                                      : AppPalette.of(context).inkOpacity(.25),
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(12),
+                        child: InkWell(
+                          key: ValueKey('chart-day-${dayKey(day.day)}'),
+                          onTap: () => onOpenDay(day.day),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Semantics(
+                            button: true,
+                            label:
+                                '${DateFormat('d MMMM', 'ru').format(day.day)}: ${day.completed} из ${day.total}',
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  showCount
+                                      ? '${day.completed}'
+                                      : '${(day.ratio * 100).round()}%',
+                                  key: ValueKey(
+                                    'chart-value-${dayKey(day.day)}',
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    height: 1.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppPalette.of(
+                                      context,
+                                    ).inkOpacity(.6),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                dayKey(day.day) == dayKey(today)
-                                    ? 'Сег'
-                                    : day.day.day.toString().padLeft(2, '0'),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  height: 1.5,
-                                  color: AppPalette.of(context).inkOpacity(.45),
+                                const SizedBox(height: 8),
+                                AnimatedContainer(
+                                  key: ValueKey('chart-bar-${dayKey(day.day)}'),
+                                  duration: const Duration(milliseconds: 500),
+                                  height:
+                                      98 *
+                                      (showCount
+                                              ? day.completed / maximum
+                                              : day.ratio)
+                                          .clamp(.04, 1.0),
+                                  decoration: BoxDecoration(
+                                    color: dayKey(day.day) == dayKey(today)
+                                        ? AppPalette.of(context).ink
+                                        : AppPalette.of(
+                                            context,
+                                          ).inkOpacity(.25),
+                                    borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(colors.chartRadius),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 8),
+                                Text(
+                                  dayKey(day.day) == dayKey(today)
+                                      ? 'Сег'
+                                      : day.day.day.toString().padLeft(2, '0'),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    height: 1.5,
+                                    color: AppPalette.of(
+                                      context,
+                                    ).inkOpacity(.45),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -567,7 +559,7 @@ class AwardsView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Ачивки', style: pageHeading),
+        Text('Ачивки', style: pageHeading(context)),
         const SizedBox(height: 4),
         Text('Открыто $got из ${awards.length}', style: captionStyle(context)),
         const SizedBox(height: 12),
@@ -576,7 +568,7 @@ class AwardsView extends StatelessWidget {
           child: LinearProgressIndicator(
             value: awards.isEmpty ? 0 : got / awards.length,
             minHeight: 8,
-            color: AppPalette.of(context).ink,
+            color: AppPalette.of(context).strong,
             backgroundColor: AppPalette.of(context).sand,
           ),
         ),
@@ -609,73 +601,76 @@ class _AwardCard extends StatelessWidget {
   final TaskAward award;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: award.unlocked
-          ? AppPalette.of(context).card
-          : AppPalette.of(context).sand.withValues(alpha: .6),
-      borderRadius: BorderRadius.circular(24),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 56,
-          height: 56,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: award.unlocked
-                ? AppPalette.of(context).cream
-                : AppPalette.of(context).inkOpacity(.1),
-            border: award.unlocked
-                ? Border.all(color: AppPalette.of(context).inkOpacity(.15))
-                : null,
-            boxShadow: award.unlocked
-                ? const [
-                    BoxShadow(
-                      color: Color(0x402B2116),
-                      blurRadius: 14,
-                      spreadRadius: -4,
-                      offset: Offset(0, 6),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Text(
-            award.glyph,
-            style: TextStyle(
-              fontSize: 18,
-              height: 1.55,
-              color: award.unlocked
-                  ? AppPalette.of(context).ink
-                  : AppPalette.of(context).inkOpacity(.3),
+  Widget build(BuildContext context) {
+    final colors = AppPalette.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: colors.panel(
+        color: award.unlocked ? colors.card : colors.sand,
+        flat: colors.design == AppDesign.editorial,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Transform.rotate(
+            angle: colors.playful
+                ? (award.glyph.length.isEven ? .08 : -.08)
+                : 0,
+            child: Container(
+              width: 56,
+              height: 56,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: award.unlocked ? colors.accent : colors.done,
+                border: Border.all(
+                  color: award.unlocked
+                      ? colors.strong.withValues(alpha: .3)
+                      : colors.line,
+                ),
+                borderRadius: BorderRadius.circular(
+                  colors.design == AppDesign.strict
+                      ? 5
+                      : colors.playful
+                      ? 18
+                      : 28,
+                ),
+              ),
+              child: Text(
+                award.glyph,
+                style: TextStyle(
+                  fontSize: 18,
+                  height: 1.5,
+                  color: award.unlocked
+                      ? const Color(0xFF252825)
+                      : colors.muted,
+                ),
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          award.title,
-          style: TextStyle(
-            fontSize: 15,
-            height: 1.5,
-            fontWeight: FontWeight.w700,
-            color: award.unlocked
-                ? AppPalette.of(context).ink
-                : AppPalette.of(context).inkOpacity(.45),
+          const SizedBox(height: 14),
+          Text(
+            award.title,
+            textAlign: TextAlign.center,
+            style: colors.heading.copyWith(
+              fontSize: 15,
+              height: 1.4,
+              color: award.unlocked ? colors.ink : colors.muted,
+            ),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          award.description,
-          style: TextStyle(
-            fontSize: 12,
-            height: 1.375,
-            color: AppPalette.of(context).inkOpacity(.5),
+          const SizedBox(height: 6),
+          Text(
+            award.description,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, height: 1.5, color: colors.muted),
           ),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: 8),
+          Icon(
+            award.unlocked ? Icons.check_circle_outline : Icons.lock_outline,
+            size: 16,
+            color: award.unlocked ? colors.strong : colors.muted,
+          ),
+        ],
+      ),
+    );
+  }
 }

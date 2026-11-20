@@ -85,6 +85,19 @@ void main() {
       tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
       await tester.pumpAndSettle();
       expect(brightness(), Brightness.dark);
+      await tester.scrollUntilVisible(
+        find.text('Вечернее напоминание'),
+        180,
+        scrollable: find
+            .byWidgetPredicate(
+              (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+            )
+            .last,
+      );
+      await tester.ensureVisible(
+        find.widgetWithText(ListTile, 'Вечернее напоминание'),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Вечернее напоминание'));
       await tester.pumpAndSettle();
       expect(find.text('Напоминать каждый день'), findsOneWidget);

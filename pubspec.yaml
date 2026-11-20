@@ -1,7 +1,7 @@
 ﻿name: daily_todo
 description: Daily planning, one small step at a time.
 publish_to: none
-version: 0.2.0+2
+version: 0.6.0+6
 
 environment:
   sdk: ^3.8.1
@@ -28,7 +28,16 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/fonts/GolosText-OFL.txt
+    - assets/fonts/Literata-OFL.txt
   fonts:
     - family: Google Sans
       fonts:
         - asset: assets/fonts/GoogleSans.ttf
+    - family: Golos Text
+      fonts:
+        - asset: assets/fonts/GolosText.ttf
+    - family: Literata
+      fonts:
+        - asset: assets/fonts/Literata.ttf

@@ -33,23 +33,31 @@ class _DailyAppState extends State<DailyApp> {
   }
 
   ThemeData makeTheme(Brightness brightness) {
-    final colors = AppPalette(brightness == Brightness.dark);
+    final colors = AppPalette(
+      brightness == Brightness.dark,
+      design: appearance.design,
+    );
     return ThemeData(
       brightness: brightness,
       useMaterial3: true,
-      fontFamily: 'Google Sans',
+      fontFamily: 'Golos Text',
+      extensions: [colors],
       scaffoldBackgroundColor: colors.paper,
       colorScheme:
           ColorScheme.fromSeed(
-            seedColor: const Color(0xFFFFCF94),
+            seedColor: colors.strong,
             brightness: brightness,
           ).copyWith(
-            primary: colors.ink,
-            onPrimary: colors.paper,
+            primary: colors.action,
+            onPrimary: colors.onAction,
             primaryContainer: colors.cream,
             onPrimaryContainer: colors.ink,
             surface: colors.card,
             onSurface: colors.ink,
+            onSurfaceVariant: colors.muted,
+            outline: colors.line,
+            outlineVariant: colors.line,
+            secondary: colors.strong,
             secondaryContainer: colors.sage,
             onSecondaryContainer: colors.ink,
           ),
@@ -57,11 +65,36 @@ class _DailyAppState extends State<DailyApp> {
         backgroundColor: colors.paper,
         foregroundColor: colors.ink,
         surfaceTintColor: Colors.transparent,
+        titleTextStyle: colors.heading.copyWith(fontSize: 22),
       ),
       inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(colors.radius),
+        ),
+      ),
+      dividerTheme: DividerThemeData(color: colors.line),
+      listTileTheme: ListTileThemeData(
+        selectedColor: colors.ink,
+        selectedTileColor: colors.sage,
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: colors.paper,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(colors.radius + 8),
+          ),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: colors.paper,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(colors.radius),
+        ),
       ),
       textTheme: TextTheme(
+        headlineLarge: colors.heading,
+        headlineMedium: colors.heading.copyWith(fontSize: 28),
+        titleLarge: colors.heading.copyWith(fontSize: 22),
         bodyMedium: TextStyle(fontSize: 14, height: 1.5, color: colors.ink),
         bodyLarge: TextStyle(fontSize: 16, height: 1.5, color: colors.ink),
       ),

@@ -13,147 +13,191 @@ import 'package:timezone/timezone.dart' as tz;
 import 'support/fakes.dart';
 
 void main() {
+  TaskAward award(List<Task> tasks, String title, {DateTime? today}) =>
+      TaskStatistics(
+        tasks,
+        today ?? DateTime(2027, 2, 1),
+      ).awards.singleWhere((a) => a.title == title);
+
+  List<Task> daily(int count, {int step = 1, bool half = false}) => [
+    for (var i = 0; i < count; i++) ...[
+      Task(
+        id: 'done-$i',
+        title: 'Готово',
+        day: dayKey(DateTime(2027, 1, 1 + i * step)),
+        done: true,
+      ),
+      if (half)
+        Task(
+          id: 'pending-$i',
+          title: 'План',
+          day: dayKey(DateTime(2027, 1, 1 + i * step)),
+        ),
+    ],
+  ];
+
+  test('All completion thresholds ignore future and unfinished tasks', () {
+    for (final (title, threshold) in [
+      ('Первоход', 1),
+      ('Червонец', 10),
+      ('Четвертак', 25),
+      ('Пять по десять', 50),
+      ('Трудоголик', 100),
+      ('Бонаква', 250),
+    ]) {
+      final tasks = [
+        for (var i = 0; i < threshold - 1; i++)
+          Task(id: '$i', title: 'Готово', day: '2027-01-01', done: true),
+        const Task(id: 'future', title: 'Потом', day: '2027-02-02', done: true),
+        const Task(id: 'pending', title: 'План', day: '2027-01-01'),
+      ];
+      expect(award(tasks, title).unlocked, false, reason: title);
+      tasks.add(
+        const Task(id: 'last', title: 'Готово', day: '2027-01-01', done: true),
+      );
+      expect(award(tasks, title).unlocked, true, reason: title);
+      tasks[tasks.length - 1] = tasks.last.copyWith(done: false);
+      expect(award(tasks, title).unlocked, false, reason: title);
+    }
+    expect(TaskStatistics([], DateTime(2027, 2, 1)).awards, hasLength(13));
+  });
+
+  test('Half-complete totals differ from consecutive series', () {
+    expect(award(daily(2, half: true), 'Ты у меня третий').unlocked, false);
+    expect(award(daily(3, half: true), 'Ты у меня третий').unlocked, true);
+    expect(
+      award(daily(3, half: true, step: 2), 'Ты у меня третий').unlocked,
+      false,
+    );
+    for (final (title, count) in [('Жигули', 7), ('Эпштейн', 14)]) {
+      expect(
+        award(daily(count - 1, half: true, step: 2), title).unlocked,
+        false,
+      );
+      final tasks = daily(count, half: true, step: 2);
+      expect(award(tasks, title).unlocked, true);
+      tasks.add(const Task(id: 'extra', title: 'Ещё', day: '2027-01-01'));
+      expect(award(tasks, title).unlocked, false);
+    }
+  });
+
   test(
-    'New completion awards unlock at their thresholds and ignore future tasks',
+    'Perfect awards require nonempty days and uninterrupted calendar series',
     () {
-      final today = DateTime(2026, 11, 4);
-      for (final (title, threshold) in [
-        ('Четверть сотни', 25),
-        ('Сотня', 100),
-        ('Большой прогресс', 250),
-      ]) {
-        final tasks = List.generate(
-          threshold - 1,
-          (i) => Task(id: '$i', title: 'Готово', day: '2026-11-04', done: true),
-        );
-        tasks.add(
-          const Task(
-            id: 'future',
-            title: 'Завтра',
-            day: '2026-11-05',
-            done: true,
-          ),
-        );
-        final before = TaskStatistics(tasks, today);
-        expect(before.awards, hasLength(11));
-        expect(
-          before.awards.singleWhere((a) => a.title == title).unlocked,
-          false,
-        );
-        tasks.add(
-          const Task(
-            id: 'last',
-            title: 'Последняя',
-            day: '2026-11-04',
-            done: true,
-          ),
-        );
-        expect(
-          TaskStatistics(
-            tasks,
-            today,
-          ).awards.singleWhere((a) => a.title == title).unlocked,
-          true,
-        );
-        tasks[tasks.length - 1] = tasks.last.copyWith(done: false);
-        expect(
-          TaskStatistics(
-            tasks,
-            today,
-          ).awards.singleWhere((a) => a.title == title).unlocked,
-          false,
-        );
+      expect(award([], 'Эйс').unlocked, false);
+      expect(award(daily(1), 'Эйс').unlocked, true);
+      for (final (title, count) in [('Бешке бир', 5), ('Тайная вечеря', 13)]) {
+        expect(award(daily(count - 1), title).unlocked, false);
+        expect(award(daily(count), title).unlocked, true);
+        expect(award(daily(count, step: 2), title).unlocked, false);
+        expect(award(daily(count, half: true), title).unlocked, false);
+        final tasks = daily(count)
+          ..add(const Task(id: 'gap', title: 'Не сделано', day: '2027-01-03'));
+        expect(award(tasks, title).unlocked, false);
       }
     },
   );
 
-  test('Five perfect days need five nonempty completed plans', () {
-    final today = DateTime(2026, 11, 10);
-    final tasks = List.generate(
-      5,
-      (i) => Task(
-        id: '$i',
-        title: 'План',
-        day: dayKey(DateTime(2026, 11, 2 + i * 2)),
-        done: true,
-      ),
-    );
-    bool unlocked(List<Task> entries) => TaskStatistics(
-      entries,
-      today,
-    ).awards.singleWhere((a) => a.title == 'Пять на отлично').unlocked;
-    expect(unlocked(tasks.take(4).toList()), false);
-    expect(unlocked(tasks), true);
-    expect(
-      unlocked([
-        ...tasks,
-        const Task(id: 'unfinished', title: 'Ещё дело', day: '2026-11-10'),
-      ]),
-      false,
-    );
-    expect(unlocked([]), false);
-  });
-
   test(
-    'Fourteen day award requires a consecutive series at least half complete',
+    'Historical streak survives later missed days and crosses year boundaries',
     () {
-      final today = DateTime(2027, 1, 5);
       final tasks = [
-        for (var i = 0; i < 14; i++) ...[
+        for (var i = 0; i < 5; i++)
           Task(
-            id: 'done-$i',
-            title: 'Готово',
-            day: dayKey(DateTime(2027, 1, 4 - i)),
+            id: '$i',
+            title: 'Да',
+            day: dayKey(DateTime(2026, 12, 29 + i)),
             done: true,
           ),
-          Task(
-            id: 'pending-$i',
-            title: 'План',
-            day: dayKey(DateTime(2027, 1, 4 - i)),
-          ),
-        ],
+        const Task(id: 'missed', title: 'Нет', day: '2027-01-03'),
       ];
-      TaskAward award(List<Task> entries) => TaskStatistics(
-        entries,
-        today,
-      ).awards.singleWhere((a) => a.title == 'Две недели в ритме');
-      expect(award(tasks).unlocked, true);
+      final stats = TaskStatistics(tasks, DateTime(2027, 1, 4));
+      expect(stats.streak, 0);
+      expect(stats.longestPerfectStreak, 5);
+      expect(award(tasks, 'Бешке бир').unlocked, true);
+      final throughYesterday = TaskStatistics(
+        tasks.take(5).toList(),
+        DateTime(2027, 1, 3),
+      );
+      expect(throughYesterday.streak, 5);
+    },
+  );
+
+  test(
+    'NNN counts completed days from first task, empty days and interruptions',
+    () {
+      const first = Task(id: 'first', title: 'План', day: '2027-01-01');
+      expect(award([], 'NNN').unlocked, false);
       expect(
-        award(tasks.where((t) => t.day != '2026-12-22').toList()).unlocked,
+        award([first], 'NNN', today: DateTime(2027, 1, 30)).unlocked,
         false,
       );
       expect(
-        award(tasks.where((t) => t.day != '2026-12-30').toList()).unlocked,
-        false,
+        award([first], 'NNN', today: DateTime(2027, 1, 31)).unlocked,
+        true,
       );
       expect(
         award([
-          ...tasks,
-          const Task(id: 'extra', title: 'Ещё дело', day: '2026-12-30'),
-        ]).unlocked,
+          first,
+          const Task(
+            id: 'done',
+            title: 'Готово',
+            day: '2027-01-15',
+            done: true,
+          ),
+        ], 'NNN').unlocked,
         false,
+      );
+      expect(
+        award(
+          [
+            first,
+            const Task(
+              id: 'today',
+              title: 'Готово',
+              day: '2027-01-31',
+              done: true,
+            ),
+          ],
+          'NNN',
+          today: DateTime(2027, 1, 31),
+        ).unlocked,
+        true,
       );
     },
   );
 
-  test('Streak uses consecutive calendar days and ignores future plans', () {
-    final tasks = [
-      const Task(id: '1', title: 'Done', day: '2026-11-03', done: true),
-      const Task(id: '2', title: 'Done', day: '2026-11-02', done: true),
-      const Task(id: '3', title: 'Gap', day: '2026-11-01'),
-      const Task(id: '4', title: 'Older', day: '2026-10-31', done: true),
-      const Task(id: '5', title: 'Future', day: '2026-11-05', done: true),
-    ];
-    final statistics = TaskStatistics(tasks, DateTime(2026, 11, 4));
-    expect(statistics.streak, 2);
-    expect(statistics.awards[3].unlocked, false);
-    final today = TaskStatistics([
-      ...tasks,
-      const Task(id: '6', title: 'Today', day: '2026-11-04', done: true),
-    ], DateTime(2026, 11, 4));
-    expect(today.streak, 3);
-    expect(today.awards[3].unlocked, true);
-  });
+  test(
+    'Secret award matches Russian word forms, is hidden until completion and ignores future',
+    () {
+      bool visible(
+        String title, {
+        bool done = true,
+        String day = '2027-01-01',
+      }) => TaskStatistics([
+        Task(id: '1', title: title, day: day, done: done),
+      ], DateTime(2027, 2, 1)).awards.any((a) => a.title == 'Дрочер');
+      for (final title in [
+        'дрочить',
+        'Подрочить!',
+        'ДРОЧКА',
+        'мастурбация',
+        'онанизм',
+        'Заняться мастурбацией',
+        'мастурбировать',
+        'онанировать',
+        'подрочил',
+      ]) {
+        expect(visible(title), true, reason: title);
+      }
+      for (final title in ['Прочитать', 'Командировка', 'Подрочник', 'спорт']) {
+        expect(visible(title), false, reason: title);
+      }
+      expect(visible('дрочить', done: false), false);
+      expect(visible('дрочить', day: '2027-02-02'), false);
+    },
+  );
+
   test(
     'Dates cross month/year boundaries; switching midnight preserves a future selection',
     () async {
@@ -216,7 +260,8 @@ void main() {
       expect(stats.total, 2);
       expect(stats.percent, 50);
       expect(stats.perfectDays, 1);
-      expect(stats.achievements, [true, false, true, false]);
+      expect(stats.awards.first.unlocked, true);
+      expect(stats.awards[3].unlocked, true);
       expect(stats.week.last.total, 1);
     },
   );

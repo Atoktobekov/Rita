@@ -5,11 +5,9 @@ import '../../domain/entities/task_snapshot.dart';
 import '../../domain/usecases/manage_tasks.dart';
 import '../../domain/usecases/task_statistics.dart';
 
-class TaskMove {
-  TaskMove(Iterable<Task> tasks, this.destination)
-    : tasks = List.unmodifiable(tasks);
+class TaskCopy {
+  TaskCopy(Iterable<Task> tasks) : tasks = List.unmodifiable(tasks);
   final List<Task> tasks;
-  final String destination;
 }
 
 class PlannerController extends ChangeNotifier {
@@ -103,37 +101,50 @@ class PlannerController extends ChangeNotifier {
     _accept(await actions.restoreBackup());
   });
 
-  Future<TaskMove> moveUnfinishedToTomorrow() => _mutate(() async {
+  Future<TaskCopy> copyUnfinishedToTomorrow() => _mutate(() async {
+    if (selected.isAfter(today)) {
+      throw StateError('Выберите сегодняшний или прошедший день');
+    }
     final destination = dayKey(nextDay(today));
-    final originals = selectedTasks
-        .where((t) => !t.done && t.day != destination)
-        .toList();
-    final move = TaskMove(originals, destination);
-    if (originals.isEmpty) return move;
-    final ids = originals.map((t) => t.id).toSet();
-    final next = [
-      for (final task in _tasks)
-        ids.contains(task.id) ? task.copyWith(day: destination) : task,
-    ];
-    await actions.replaceAll(next);
-    _tasks = next;
-    return move;
+    final ids = _tasks.map((t) => t.id).toSet();
+    var serial = DateTime.now().microsecondsSinceEpoch;
+    final copies = <Task>[];
+    for (final task in selectedTasks.where((t) => !t.done)) {
+      String id;
+      do {
+        id = 'copy-${serial++}';
+      } while (!ids.add(id));
+      copies.add(
+        Task(
+          id: id,
+          title: task.title,
+          day: destination,
+          category: task.category,
+        ),
+      );
+    }
+    if (copies.isNotEmpty) {
+      final next = [..._tasks, ...copies];
+      await actions.replaceAll(next);
+      _tasks = next;
+    }
+    return TaskCopy(copies);
   });
 
-  Future<void> undoMove(TaskMove move) => _mutate(() async {
+  Future<void> undoCopy(TaskCopy copy) => _mutate(() async {
     final byId = {for (final task in _tasks) task.id: task};
-    for (final original in move.tasks) {
+    for (final original in copy.tasks) {
       final current = byId[original.id];
       if (current == null ||
-          current.day != move.destination ||
+          current.day != original.day ||
           current.title != original.title ||
           current.category != original.category ||
           current.done != original.done) {
-        throw StateError('Перенесённые задачи уже изменились');
+        throw StateError('Скопированные задачи уже изменились');
       }
     }
-    final originals = {for (final task in move.tasks) task.id: task};
-    final next = [for (final task in _tasks) originals[task.id] ?? task];
+    final ids = copy.tasks.map((t) => t.id).toSet();
+    final next = _tasks.where((t) => !ids.contains(t.id)).toList();
     await actions.replaceAll(next);
     _tasks = next;
   });

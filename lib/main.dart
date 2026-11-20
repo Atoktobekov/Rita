@@ -10,6 +10,7 @@ import 'presentation/controllers/planner_controller.dart';
 import 'presentation/controllers/reminder_controller.dart';
 
 import 'presentation/controllers/theme_controller.dart';
+import 'presentation/theme/palette.dart';
 
 export 'app.dart';
 
@@ -40,6 +41,8 @@ Future<void> main() async {
         orElse: () => ThemeMode.system,
       ),
       save: (mode) => settings.put('theme_mode', mode.name),
+      design: AppDesign.fromStorage(settings.get('design_theme')),
+      saveDesign: (design) => settings.put('design_theme', design.name),
     );
     runApp(
       DailyApp(planner: planner, reminder: reminder, appearance: appearance),
