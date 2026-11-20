@@ -53,19 +53,32 @@ class SettingsPage extends StatelessWidget {
       return DesignSheet(
         title: 'Как вам удобно',
         children: [
-          setting(
-            c,
-            icon: DesignSymbol.moon,
-            label: 'Тёмная тема',
-            value: c.dark,
-            switchKey: const ValueKey('dark-switch'),
-            onChanged: appearance.busy
+          Text('Тема', style: designText(14)),
+          const SizedBox(height: 8),
+          SegmentedButton<ThemeMode>(
+            showSelectedIcon: false,
+            style: SegmentedButton.styleFrom(
+              backgroundColor: c.sand,
+              foregroundColor: c.muted,
+              selectedBackgroundColor: c.dark ? c.accent : c.ink,
+              selectedForegroundColor: c.paper,
+              minimumSize: const Size(0, 48),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+            ),
+            segments: const [
+              ButtonSegment(value: ThemeMode.light, label: Text('Светлая')),
+              ButtonSegment(value: ThemeMode.dark, label: Text('Тёмная')),
+              ButtonSegment(
+                value: ThemeMode.system,
+                label: Text('Как в системе', textAlign: TextAlign.center),
+              ),
+            ],
+            selected: {appearance.mode},
+            onSelectionChanged: appearance.busy
                 ? null
-                : (value) => change(
+                : (selection) => change(
                     context,
-                    () => appearance.update(
-                      value ? ThemeMode.dark : ThemeMode.light,
-                    ),
+                    () => appearance.update(selection.single),
                     'тему',
                   ),
           ),
@@ -171,21 +184,6 @@ class SettingsPage extends StatelessWidget {
                           'дизайн',
                         ),
                       ),
-                    const Divider(),
-                    ListTile(
-                      key: const ValueKey('theme-system'),
-                      title: const Text('Следовать режиму системы'),
-                      selected: appearance.mode == ThemeMode.system,
-                      trailing: appearance.mode == ThemeMode.system
-                          ? const DesignIcon(DesignSymbol.check, size: 19)
-                          : null,
-                      enabled: !appearance.busy,
-                      onTap: () => change(
-                        context,
-                        () => appearance.update(ThemeMode.system),
-                        'тему',
-                      ),
-                    ),
                   ],
                 ),
               ),

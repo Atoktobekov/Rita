@@ -103,7 +103,7 @@ void main() {
           await tester.pumpAndSettle();
         }
       }
-      await tester.tap(find.byKey(const ValueKey('nav-section-2')));
+      await tester.tap(find.byKey(const ValueKey('nav-section-3')));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Настройки'));
       await tester.pumpAndSettle();

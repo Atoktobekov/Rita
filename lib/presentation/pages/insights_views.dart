@@ -286,10 +286,8 @@ class StatisticsView extends StatelessWidget {
     required this.mode,
     required this.onModeChanged,
     required this.onOpenDay,
-    required this.onSettings,
   });
 
-  final VoidCallback onSettings;
   final TaskStatistics statistics;
   final StatisticsMode mode;
   final ValueChanged<StatisticsMode> onModeChanged;
@@ -305,32 +303,6 @@ class StatisticsView extends StatelessWidget {
           eyebrow: 'МАЛЕНЬКИЕ ШАГИ СЧИТАЮТСЯ',
           title: 'Статистика',
           subtitle: 'Вы делаете больше, чем кажется.',
-          action: Tooltip(
-            message: 'Настройки',
-            child: InkWell(
-              onTap: onSettings,
-              child: SizedBox(
-                width: 35,
-                height: 48,
-                child: Center(
-                  child: Container(
-                    width: 35,
-                    height: 38,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: c.line),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: DesignIcon(
-                      DesignSymbol.settings,
-                      size: 22,
-                      color: c.muted,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 23),
@@ -377,10 +349,8 @@ class StatisticsView extends StatelessWidget {
                       'Хороший ритм. Так держать.',
                       style: designText(
                         11,
-                        color: c.strict
-                            ? c.dark
-                                  ? c.paper
-                                  : const Color(0xFFB2B8A7)
+                        color: c.strict && !c.dark
+                            ? const Color(0xFFB2B8A7)
                             : c.muted,
                       ),
                     ),
@@ -441,29 +411,6 @@ class StatisticsView extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         chart(context, c),
-        const SizedBox(height: 7),
-        InkWell(
-          onTap: onSettings,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 56),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                DesignIcon(DesignSymbol.settings, size: 19, color: c.muted),
-                const SizedBox(width: 9),
-                Flexible(
-                  child: Text(
-                    'Тема и вечернее напоминание',
-                    textAlign: TextAlign.center,
-                    style: designText(12, color: c.muted),
-                  ),
-                ),
-                const SizedBox(width: 9),
-                DesignIcon(DesignSymbol.chevron, size: 17, color: c.muted),
-              ],
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -605,7 +552,7 @@ class StatisticsView extends StatelessWidget {
                           alignment: Alignment.center,
                           decoration: mode == value
                               ? BoxDecoration(
-                                  color: c.card,
+                                  color: c.selectedSegment,
                                   borderRadius: BorderRadius.circular(
                                     c.strict ? 2 : 6,
                                   ),
@@ -622,7 +569,9 @@ class StatisticsView extends StatelessWidget {
                             label,
                             style: designText(
                               10,
-                              color: mode == value ? c.ink : c.muted,
+                              color: mode == value
+                                  ? c.onSelectedSegment
+                                  : c.muted,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -762,7 +711,8 @@ class StatisticsView extends StatelessWidget {
 }
 
 class AwardsView extends StatelessWidget {
-  const AwardsView({super.key, required this.awards});
+  const AwardsView({super.key, required this.awards, required this.onSettings});
+  final VoidCallback onSettings;
   final List<TaskAward> awards;
 
   static const symbols = <String, DesignSymbol>{
@@ -790,6 +740,11 @@ class AwardsView extends StatelessWidget {
       children: [
         DesignHeader(
           eyebrow: 'ЕСТЬ ЧЕМ ГОРДИТЬСЯ',
+          action: IconButton(
+            tooltip: 'Настройки',
+            onPressed: onSettings,
+            icon: Icon(Icons.settings_outlined, size: 22, color: c.muted),
+          ),
           title: c.editorial ? 'Мои открытия' : 'Ачивки',
           subtitle: c.playful
               ? 'Обычные дела. Необычный ты.'
@@ -1000,8 +955,8 @@ class AwardsView extends StatelessWidget {
         : c.editorial
         ? const Color(0xFF6F8988)
         : ink;
-    final symbol = award.title == 'Трудоголик'
-        ? DesignSymbol.coffee
+    final symbol = award.title == 'Легенда'
+        ? DesignSymbol.star
         : symbols[award.glyph] ?? DesignSymbol.award;
     return Transform.rotate(
       angle: !c.playful

@@ -303,7 +303,7 @@ void main() {
       await tester.tap(find.text('Сегодня').last);
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('reminder-switch')), findsNothing);
-      await tester.tap(find.text('Статистика'));
+      await tester.tap(find.byKey(const ValueKey('nav-section-3')));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Настройки'));
       await tester.pumpAndSettle();

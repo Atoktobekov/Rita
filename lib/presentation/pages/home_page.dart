@@ -362,6 +362,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           statistics: planner.statistics,
           mode: statisticsMode,
           onOpenDay: showDayDetails,
+          onModeChanged: (value) => setState(() => statisticsMode = value),
+        )
+      else
+        AwardsView(
+          awards: planner.statistics.awards,
           onSettings: () => showDesignSheet<void>(
             context,
             builder: (_) => SettingsPage(
@@ -369,10 +374,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               reminder: widget.reminder,
             ),
           ),
-          onModeChanged: (value) => setState(() => statisticsMode = value),
-        )
-      else
-        AwardsView(awards: planner.statistics.awards),
+        ),
     ],
   );
 
@@ -445,16 +447,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               offset: Offset(0, c.editorial ? -1 : 0),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: c.strict ? 'DAILY' : 'daily'),
-                      TextSpan(
-                        text: '.',
-                        style: TextStyle(color: c.muted),
-                      ),
-                    ],
-                  ),
+                child: Text(
+                  'Rita',
                   style:
                       designText(
                         c.strict
@@ -462,7 +456,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             : c.editorial
                             ? 29
                             : 28,
-                        color: c.playful ? const Color(0xFF756096) : c.ink,
+                        color: c.playful ? c.strong : c.ink,
                         weight: c.editorial ? 500 : 700,
                         height: 1.2,
                         spacing: c.strict
@@ -485,12 +479,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         Expanded(
           flex: 2,
           child: Text(
-            switch (c.design) {
-              AppDesign.strict => 'МЕНЬШЕ, НО ЛУЧШЕ',
-              AppDesign.play => 'Всё получится',
-              AppDesign.editorial => 'Личный планировщик',
-              _ => 'В своём ритме',
-            },
+            'Routine Assistant',
             textAlign: TextAlign.right,
             style: designText(
               c.strict ? 8 : 11,
@@ -624,7 +613,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Color navColor(AppPalette c, num position, int tab) => Color.lerp(
     c.muted,
     c.playful
-        ? const Color(0xFF7854AD)
+        ? c.strong
         : c.strict && c.dark
         ? c.paper
         : c.ink,
@@ -673,7 +662,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             )
           : BoxDecoration(
               color: c.strict
-                  ? c.ink
+                  ? c.hero
                   : c.playful && !c.dark
                   ? const Color(0xFFECE5FA)
                   : c.cream,
@@ -1078,7 +1067,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     required VoidCallback onTap,
   }) {
     final c = AppPalette.of(context);
-    final ink = selected ? (c.lined ? c.paper : c.ink) : c.muted;
+    final ink = selected ? (c.lined ? c.paper : c.onSelectedSegment) : c.muted;
     final radius = BorderRadius.circular(
       c.strict
           ? 3
@@ -1095,7 +1084,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          color: selected ? (c.lined ? c.ink : c.card) : null,
+          color: selected
+              ? (c.lined && !c.dark ? c.ink : c.selectedSegment)
+              : null,
           borderRadius: radius,
           boxShadow: selected && !c.lined
               ? const [

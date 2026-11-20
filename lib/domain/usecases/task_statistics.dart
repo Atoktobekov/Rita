@@ -136,7 +136,7 @@ class TaskStatistics {
     ),
     TaskAward('Пять по десять', '50 выполненных задач', '50', completed >= 50),
     TaskAward('Четвертак', '25 выполненных задач', '25', completed >= 25),
-    TaskAward('Трудоголик', '100 выполненных задач', '100', completed >= 100),
+    TaskAward('Легенда', '100 выполненных задач', '100', completed >= 100),
     TaskAward('Бонаква', '250 выполненных задач', '250', completed >= 250),
     TaskAward(
       'Бешке бир',

@@ -88,7 +88,7 @@ void main() {
   );
 
   test(
-    'The eight combinations use readable colors and match the shared dark background',
+    'The eight combinations use readable colors and have distinct dark backgrounds',
     () {
       double contrast(Color a, Color b) {
         final first = a.computeLuminance(), second = b.computeLuminance();
@@ -120,10 +120,20 @@ void main() {
             greaterThanOrEqualTo(4.5),
             reason: '$design/$dark progress',
           );
-          if (dark) darkBackgrounds.add(palette.paper);
+          expect(
+            contrast(palette.onSelectedSegment, palette.selectedSegment),
+            greaterThanOrEqualTo(4.5),
+          );
+          if (dark) {
+            darkBackgrounds.add(palette.paper);
+            expect(
+              contrast(palette.selectedSegment, palette.sand),
+              greaterThanOrEqualTo(3),
+            );
+          }
         }
       }
-      expect(darkBackgrounds, {const Color(0xFF25221F)});
+      expect(darkBackgrounds, hasLength(AppDesign.values.length));
     },
   );
 
@@ -218,7 +228,7 @@ void main() {
   );
 
   testWidgets(
-    'Design selection from statistics is live and failure is visible',
+    'Design selection from awards is live and failure is visible',
     (tester) async {
       final planner = PlannerController(ManageTasks(MemoryTaskRepository()));
       final reminder = ReminderController(
@@ -236,7 +246,7 @@ void main() {
         DailyApp(planner: planner, reminder: reminder, appearance: appearance),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('nav-section-2')));
+      await tester.tap(find.byKey(const ValueKey('nav-section-3')));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Настройки'));
       await tester.pumpAndSettle();

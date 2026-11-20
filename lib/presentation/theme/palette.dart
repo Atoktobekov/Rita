@@ -55,7 +55,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
         positive: const Color(0xFFEDF1E4),
         celebration: const Color(0xFFFBEBDD),
       ),
-      (_, true) => AppPalette._(
+      (AppDesign.warm, true) => AppPalette._(
         design: design,
         dark: dark,
         paper: const Color(0xFF25221F),
@@ -71,6 +71,57 @@ class AppPalette extends ThemeExtension<AppPalette> {
         strong: const Color(0xFFE8B879),
         positive: const Color(0xFF303A2D),
         celebration: const Color(0xFF483327),
+      ),
+      (AppDesign.strict, true) => AppPalette._(
+        design: design,
+        dark: dark,
+        paper: const Color(0xFF191C18),
+        card: const Color(0xFF242922),
+        ink: const Color(0xFFEDF2E6),
+        muted: const Color(0xFFAFC0A6),
+        accent: const Color(0xFFC7E870),
+        cream: const Color(0xFF323C2A),
+        sage: const Color(0xFF38452B),
+        sand: const Color(0xFF2A3027),
+        line: const Color(0xFF414B3B),
+        done: const Color(0xFF252A23),
+        strong: const Color(0xFFC7E870),
+        positive: const Color(0xFF2D3E29),
+        celebration: const Color(0xFF394329),
+      ),
+      (AppDesign.play, true) => AppPalette._(
+        design: design,
+        dark: dark,
+        paper: const Color(0xFF241C30),
+        card: const Color(0xFF30263F),
+        ink: const Color(0xFFF4EAFF),
+        muted: const Color(0xFFCBBADB),
+        accent: const Color(0xFFCCB2FF),
+        cream: const Color(0xFF403050),
+        sage: const Color(0xFF49355C),
+        sand: const Color(0xFF362B46),
+        line: const Color(0xFF51435F),
+        done: const Color(0xFF302939),
+        strong: const Color(0xFFD3B9FF),
+        positive: const Color(0xFF293C38),
+        celebration: const Color(0xFF4B3044),
+      ),
+      (AppDesign.editorial, true) => AppPalette._(
+        design: design,
+        dark: dark,
+        paper: const Color(0xFF192328),
+        card: const Color(0xFF232F35),
+        ink: const Color(0xFFE6F0F2),
+        muted: const Color(0xFFAFC1C7),
+        accent: const Color(0xFFA3CCDF),
+        cream: const Color(0xFF2E4048),
+        sage: const Color(0xFF30464F),
+        sand: const Color(0xFF29373E),
+        line: const Color(0xFF40535A),
+        done: const Color(0xFF263137),
+        strong: const Color(0xFFA3CCDF),
+        positive: const Color(0xFF2A3C38),
+        celebration: const Color(0xFF30414C),
       ),
       (AppDesign.strict, false) => AppPalette._(
         design: design,
@@ -170,12 +221,14 @@ class AppPalette extends ThemeExtension<AppPalette> {
   bool get strict => design == AppDesign.strict;
   Color get action => design == AppDesign.editorial ? ink : accent;
   Color get onAction => editorial || dark ? paper : ink;
-  Color get hero => strict
+  Color get selectedSegment => dark ? accent : card;
+  Color get onSelectedSegment => dark ? paper : ink;
+  Color get hero => strict && !dark
       ? ink
       : playful && !dark
       ? const Color(0xFFE9E0FA)
       : cream;
-  Color get onHero => strict ? paper : ink;
+  Color get onHero => strict && !dark ? paper : ink;
   Color get heroAccent => playful ? const Color(0xFFA58BDC) : accent;
   TextStyle get heading => TextStyle(
     fontFamily: editorial ? 'Literata' : 'Golos Text',
