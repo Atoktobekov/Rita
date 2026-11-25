@@ -38,6 +38,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int page = 0;
   int filter = 0;
   StatisticsMode statisticsMode = StatisticsMode.count;
+  ChartPeriod chartPeriod = ChartPeriod.week;
+  DateTimeRange? customChartRange;
   final draft = TextEditingController();
   final draftFocus = FocusNode();
   final scroll = ScrollController();
@@ -245,6 +247,33 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (date != null && mounted) selectDay(date);
   }
 
+  DateTimeRange get chartRange {
+    if (chartPeriod == ChartPeriod.custom) return customChartRange!;
+    final end = planner.today;
+    final days = chartPeriod == ChartPeriod.week ? 7 : 30;
+    return DateTimeRange(
+      start: DateTime(end.year, end.month, end.day - days + 1),
+      end: end,
+    );
+  }
+
+  Future<void> selectChartPeriod(ChartPeriod period) async {
+    if (period == ChartPeriod.custom) {
+      final initial = chartRange;
+      final picked = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(1900),
+        lastDate: planner.today,
+        currentDate: planner.today,
+        initialDateRange: initial.end.isAfter(planner.today) ? null : initial,
+        helpText: 'Выберите период',
+      );
+      if (!mounted || picked == null) return;
+      customChartRange = picked;
+    }
+    setState(() => chartPeriod = period);
+  }
+
   void animatePage(int value) {
     if (!pages.hasClients) return;
     if (MediaQuery.disableAnimationsOf(context)) {
@@ -363,6 +392,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       else if (index == 2)
         StatisticsView(
           statistics: planner.statistics,
+          range: chartRange,
+          period: chartPeriod,
+          onPeriodChanged: selectChartPeriod,
           mode: statisticsMode,
           onOpenDay: showDayDetails,
           onModeChanged: (value) => setState(() => statisticsMode = value),

@@ -25,7 +25,7 @@ class DesignHeader extends StatelessWidget {
     super.key,
     required this.eyebrow,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     this.mark,
     this.action,
     this.day = false,
@@ -33,7 +33,7 @@ class DesignHeader extends StatelessWidget {
 
   final String eyebrow;
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final Widget? mark;
   final Widget? action;
   final bool day;
@@ -68,21 +68,23 @@ class DesignHeader extends StatelessWidget {
                     ],
                   ],
                 ),
-                SizedBox(height: day && c.editorial ? 10 : 6),
-                Text(
-                  subtitle,
-                  style:
-                      designText(
-                        13,
-                        color: c.muted,
-                        height: 1.6,
-                        font: day && c.editorial ? 'Literata' : 'Golos Text',
-                      ).copyWith(
-                        fontStyle: day && c.editorial
-                            ? FontStyle.italic
-                            : FontStyle.normal,
-                      ),
-                ),
+                if (subtitle != null) ...[
+                  SizedBox(height: day && c.editorial ? 10 : 6),
+                  Text(
+                    subtitle!,
+                    style:
+                        designText(
+                          13,
+                          color: c.muted,
+                          height: 1.6,
+                          font: day && c.editorial ? 'Literata' : 'Golos Text',
+                        ).copyWith(
+                          fontStyle: day && c.editorial
+                              ? FontStyle.italic
+                              : FontStyle.normal,
+                        ),
+                  ),
+                ],
               ],
             ),
           ),

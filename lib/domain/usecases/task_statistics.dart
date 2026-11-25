@@ -28,9 +28,7 @@ class TaskStatistics {
           entry.value.where((t) => t.done).length,
         ),
     ]..sort((a, b) => a.day.compareTo(b.day));
-    final progress = {for (final day in days) dayKey(day.day): day};
-    DayProgress at(DateTime day) =>
-        progress[dayKey(day)] ?? DayProgress(day, 0, 0);
+    _days = {for (final day in days) day.day: day};
 
     total = days.fold(0, (sum, day) => sum + day.total);
     completed = days.fold(0, (sum, day) => sum + day.completed);
@@ -38,16 +36,16 @@ class TaskStatistics {
     halfCompleteDays = days.where((day) => day.halfComplete).length;
     week = List.generate(
       7,
-      (i) => at(DateTime(today.year, today.month, today.day - 6 + i)),
+      (i) => progressOn(DateTime(today.year, today.month, today.day - 6 + i)),
     );
 
     // A still-unfinished today does not erase the current streak through yesterday.
     var cursor = dateOnly(today);
-    if (!at(cursor).halfComplete) {
+    if (!progressOn(cursor).halfComplete) {
       cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
     }
     var current = 0;
-    while (at(cursor).halfComplete) {
+    while (progressOn(cursor).halfComplete) {
       current++;
       cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
     }
@@ -75,15 +73,12 @@ class TaskStatistics {
 
     // Only finished calendar days count for inactivity. Never invent history
     // before the first recorded task. UTC ordinals avoid daylight-saving gaps.
-    int ordinal(DateTime day) =>
-        DateTime.utc(day.year, day.month, day.day).millisecondsSinceEpoch ~/
-        Duration.millisecondsPerDay;
     var bestEmpty = 0;
     if (days.isNotEmpty) {
-      final end = ordinal(today) - 1;
-      var start = ordinal(days.first.day);
+      final end = calendarDayNumber(today) - 1;
+      var start = calendarDayNumber(days.first.day);
       for (final day in days.where((d) => d.completed > 0)) {
-        final index = ordinal(day.day);
+        final index = calendarDayNumber(day.day);
         if (index > end) break;
         if (index - start > bestEmpty) bestEmpty = index - start;
         start = index + 1;
@@ -92,6 +87,25 @@ class TaskStatistics {
     }
     longestInactiveStreak = bestEmpty;
     secretUnlocked = eligible.any((t) => t.done && _secretTitle(t.title));
+  }
+
+  late final Map<DateTime, DayProgress> _days;
+
+  DayProgress progressOn(DateTime date) {
+    final day = dateOnly(date);
+    return _days[day] ?? DayProgress(day, 0, 0);
+  }
+
+  int maxCompletedBetween(DateTime first, DateTime last) {
+    var maximum = 0;
+    for (final day in _days.values) {
+      if (!day.day.isBefore(first) &&
+          !day.day.isAfter(last) &&
+          day.completed > maximum) {
+        maximum = day.completed;
+      }
+    }
+    return maximum;
   }
 
   late final int total;

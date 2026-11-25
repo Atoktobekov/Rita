@@ -227,6 +227,89 @@ void main() {
     },
   );
 
+  testWidgets('Chart uses inclusive presets and a custom range', (
+    tester,
+  ) async {
+    await planner.save(
+      const Task(
+        id: 'old',
+        title: 'В начале месяца',
+        day: '2026-12-02',
+        done: true,
+      ),
+    );
+    await open(tester);
+    await tester.tap(find.byKey(const ValueKey('nav-section-2')));
+    await tester.pumpAndSettle();
+
+    Finder day(String id) => find.byKey(ValueKey('chart-day-$id'));
+    expect(find.text('25.12.2026 – 31.12.2026'), findsOneWidget);
+    expect(day('2026-12-31'), findsOneWidget);
+    await reveal(tester, find.text('Месяц'));
+    await tester.tap(find.text('Месяц'));
+    await tester.pumpAndSettle();
+    expect(find.text('02.12.2026 – 31.12.2026'), findsOneWidget);
+    final value = find.byKey(const ValueKey('chart-value-2026-12-02'));
+    expect(tester.widget<Text>(value).data, '1');
+    final chart = find.byKey(
+      PageStorageKey(
+        DateTimeRange(start: DateTime(2026, 12, 2), end: planner.today),
+      ),
+    );
+    await tester.ensureVisible(chart);
+    await tester.scrollUntilVisible(
+      day('2026-12-31'),
+      180,
+      scrollable: find.descendant(of: chart, matching: find.byType(Scrollable)),
+    );
+    await tester.pumpAndSettle();
+    expect(day('2026-12-31').hitTestable(), findsOneWidget);
+
+    await reveal(tester, find.text('Период'));
+    await tester.tap(find.text('Период'));
+    await tester.pumpAndSettle();
+    final picker = find.byType(DateRangePickerDialog);
+    expect(
+      tester.widget<DateRangePickerDialog>(picker).lastDate,
+      planner.today,
+    );
+    Navigator.of(tester.element(picker)).pop();
+    await tester.pumpAndSettle();
+    expect(find.text('02.12.2026 – 31.12.2026'), findsOneWidget);
+
+    await tester.tap(find.text('Период'));
+    await tester.pumpAndSettle();
+    final strings = MaterialLocalizations.of(tester.element(picker));
+    await tester.tap(find.byTooltip(strings.inputDateModeButtonLabel));
+    await tester.pumpAndSettle();
+    final fields = find.descendant(
+      of: picker,
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(
+      fields.first,
+      strings.formatCompactDate(DateTime(2026, 11, 30)),
+    );
+    await tester.enterText(
+      fields.last,
+      strings.formatCompactDate(DateTime(2026, 12, 2)),
+    );
+    await tester.tap(find.text(strings.okButtonLabel));
+    await tester.pumpAndSettle();
+    expect(find.text('30.11.2026 – 02.12.2026'), findsOneWidget);
+    expect(day('2026-11-30'), findsOneWidget);
+    expect(day('2026-12-01'), findsOneWidget);
+    expect(tester.widget<Text>(value).data, '1');
+    expect(day('2026-12-03'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('nav-section-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('nav-section-2')));
+    await tester.pumpAndSettle();
+    expect(find.text('30.11.2026 – 02.12.2026'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets(
     'Tomorrow, quick add, validation, completion, edit, deletion and undo',
     (tester) async {

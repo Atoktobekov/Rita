@@ -55,8 +55,11 @@ class _ArchiveViewState extends State<ArchiveView> {
         DesignHeader(
           eyebrow: 'ВСЁ ОСТАЁТСЯ С ВАМИ',
           title: 'Архив',
-          subtitle: 'Каждый день — часть пути.',
-          action: Text('↙', style: designText(31, color: c.muted)),
+          action: IconButton(
+            tooltip: 'Копии задач',
+            onPressed: widget.onBackups,
+            icon: DesignIcon(DesignSymbol.archive, size: 22, color: c.muted),
+          ),
         ),
         if (months.isEmpty) ...[
           Text(
@@ -95,51 +98,6 @@ class _ArchiveViewState extends State<ArchiveView> {
             archiveDay(context, c, day),
           ],
         ],
-        const SizedBox(height: 13),
-        Tooltip(
-          message: 'Копии задач',
-          child: InkWell(
-            onTap: widget.onBackups,
-            child: Container(
-              padding: const EdgeInsets.only(top: 17),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: c.line)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 39,
-                    height: 39,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: c.cream,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const DesignIcon(DesignSymbol.archive, size: 21),
-                  ),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Сохранить важное',
-                          style: designText(12, weight: 500),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          'Импорт и экспорт задач',
-                          style: designText(10, color: c.muted),
-                        ),
-                      ],
-                    ),
-                  ),
-                  DesignIcon(DesignSymbol.arrow, size: 19, color: c.muted),
-                ],
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -279,16 +237,31 @@ String dayCount(int count) {
 
 enum StatisticsMode { count, percent }
 
+enum ChartPeriod {
+  week('Неделя'),
+  month('Месяц'),
+  custom('Период');
+
+  const ChartPeriod(this.label);
+  final String label;
+}
+
 class StatisticsView extends StatelessWidget {
   const StatisticsView({
     super.key,
     required this.statistics,
+    required this.range,
+    required this.period,
+    required this.onPeriodChanged,
     required this.mode,
     required this.onModeChanged,
     required this.onOpenDay,
   });
 
   final TaskStatistics statistics;
+  final DateTimeRange range;
+  final ChartPeriod period;
+  final ValueChanged<ChartPeriod> onPeriodChanged;
   final StatisticsMode mode;
   final ValueChanged<StatisticsMode> onModeChanged;
   final ValueChanged<DateTime> onOpenDay;
@@ -299,10 +272,9 @@ class StatisticsView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DesignHeader(
+        const DesignHeader(
           eyebrow: 'МАЛЕНЬКИЕ ШАГИ СЧИТАЮТСЯ',
           title: 'Статистика',
-          subtitle: 'Вы делаете больше, чем кажется.',
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 23),
@@ -477,16 +449,14 @@ class StatisticsView extends StatelessWidget {
   );
 
   Widget chart(BuildContext context, AppPalette c) {
-    final days = statistics.week.take(6).toList();
-    final scale = days.fold(
-      5,
-      (maximum, day) => math.max(maximum, day.completed),
-    );
-    final first = days.first.day;
-    final last = days.last.day;
-    final period = first.month == last.month
-        ? '${first.day}–${DateFormat('d MMMM', 'ru').format(last)}'
-        : '${DateFormat('d MMMM', 'ru').format(first)} – ${DateFormat('d MMMM', 'ru').format(last)}';
+    final first = range.start;
+    final last = range.end;
+    final length = calendarDayNumber(last) - calendarDayNumber(first) + 1;
+    final scale = math.max(5, statistics.maxCompletedBetween(first, last));
+    final dateFormat = DateFormat('dd.MM.yyyy');
+    final dates = first == last
+        ? dateFormat.format(first)
+        : '${dateFormat.format(first)} – ${dateFormat.format(last)}';
     return Container(
       padding: EdgeInsets.fromLTRB(
         c.editorial ? 0 : 17,
@@ -519,14 +489,32 @@ class StatisticsView extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  period,
+                  dates,
                   textAlign: TextAlign.end,
                   style: designText(11, color: c.muted),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 6,
+            children: [
+              for (final option in ChartPeriod.values)
+                ChoiceChip(
+                  label: Text(option.label),
+                  selected: option == period,
+                  showCheckmark: false,
+                  onSelected: (_) => onPeriodChanged(option),
+                  selectedColor: c.selectedSegment,
+                  labelStyle: designText(
+                    12,
+                    color: option == period ? c.onSelectedSegment : c.ink,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
           Container(
             width: 195,
             padding: const EdgeInsets.all(4),
@@ -582,29 +570,47 @@ class StatisticsView extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(
-            height: math.max(
-              33,
-              MediaQuery.textScalerOf(context).scale(10) * 1.5 + 6,
-            ),
-          ),
-          Row(
-            children: [
-              for (final (index, day) in days.indexed) ...[
-                if (index > 0)
-                  SizedBox(
-                    width: MediaQuery.sizeOf(context).width < 360 ? 8 : 15,
-                  ),
-                Expanded(
-                  child: bar(context, c, day, scale, index == days.length - 1),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final labelHeight =
+                  MediaQuery.textScalerOf(context).scale(10) * 1.5;
+              final top = math.max(33.0, labelHeight + 6);
+              return SizedBox(
+                height: top + 100 + 9 + labelHeight.ceil() + 6,
+                child: ListView.builder(
+                  key: PageStorageKey(range),
+                  primary: false,
+                  scrollDirection: Axis.horizontal,
+                  physics: length <= 7
+                      ? const NeverScrollableScrollPhysics()
+                      : null,
+                  padding: EdgeInsets.only(top: top),
+                  itemExtent: constraints.maxWidth / math.min(7, length),
+                  itemCount: length,
+                  itemBuilder: (context, index) {
+                    final date = DateTime(
+                      first.year,
+                      first.month,
+                      first.day + index,
+                    );
+                    return bar(
+                      context,
+                      c,
+                      statistics.progressOn(date),
+                      scale,
+                      index == length - 1,
+                    );
+                  },
                 ),
-              ],
-            ],
+              );
+            },
           ),
           const SizedBox(height: 6),
           Center(
             child: Text(
-              'Нажмите на столбик, чтобы открыть день',
+              length > 7
+                  ? 'Листайте график по горизонтали. Нажмите на столбик, чтобы открыть день.'
+                  : 'Нажмите на столбик, чтобы открыть день',
               textAlign: TextAlign.center,
               style: designText(10, color: c.muted),
             ),
@@ -702,7 +708,16 @@ class StatisticsView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 9),
-            Text('${day.day.day}', style: designText(10, color: c.muted)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                range.start.month == range.end.month &&
+                        range.start.year == range.end.year
+                    ? '${day.day.day}'
+                    : DateFormat('d.MM').format(day.day),
+                style: designText(10, color: c.muted),
+              ),
+            ),
           ],
         ),
       ),
