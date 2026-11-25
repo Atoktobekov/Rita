@@ -215,8 +215,14 @@ class DateField extends StatelessWidget {
 }
 
 class CalendarSheet extends StatefulWidget {
-  const CalendarSheet({super.key, required this.initialDate});
+  const CalendarSheet({
+    super.key,
+    required this.initialDate,
+    this.openOnSelection = false,
+  });
+
   final DateTime initialDate;
+  final bool openOnSelection;
 
   @override
   State<CalendarSheet> createState() => _CalendarSheetState();
@@ -239,15 +245,19 @@ class _CalendarSheetState extends State<CalendarSheet> {
         DateField(
           fieldKey: const ValueKey('calendar-date'),
           day: day,
-          onChanged: (picked) => setState(() => day = picked),
+          onChanged: widget.openOnSelection
+              ? (picked) => Navigator.pop(context, picked)
+              : (picked) => setState(() => day = picked),
         ),
-        const SizedBox(height: 23),
-        DesignButton(
-          primary: true,
-          label: 'Открыть день',
-          icon: DesignSymbol.arrow,
-          onPressed: () => Navigator.pop(context, day),
-        ),
+        if (!widget.openOnSelection) ...[
+          const SizedBox(height: 23),
+          DesignButton(
+            primary: true,
+            label: 'Открыть день',
+            icon: DesignSymbol.arrow,
+            onPressed: () => Navigator.pop(context, day),
+          ),
+        ],
       ],
     );
   }

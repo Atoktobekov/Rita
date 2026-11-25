@@ -237,7 +237,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> chooseDate() async {
     final date = await showDesignSheet<DateTime>(
       context,
-      builder: (_) => CalendarSheet(initialDate: planner.selected),
+      builder: (_) => CalendarSheet(
+        initialDate: planner.selected,
+        openOnSelection: true,
+      ),
     );
     if (date != null && mounted) selectDay(date);
   }
@@ -381,40 +384,35 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: planner,
-    builder: (context, _) => AnnotatedRegion<SystemUiOverlayStyle>(
-      value: AppPalette.of(context).dark
-          ? SystemUiOverlayStyle.light
-          : SystemUiOverlayStyle.dark,
-      child: Scaffold(
-        backgroundColor: AppPalette.of(context).paper,
-        bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom == 0
-            ? Align(
-                heightFactor: 1,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 430),
-                  child: navigation(),
-                ),
-              )
-            : null,
-        body: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: SafeArea(
-              bottom: false,
-              minimum: const EdgeInsets.only(top: 46),
-              child: PageView.builder(
-                key: const ValueKey('tab-pages'),
-                controller: pages,
-                pageSnapping: false,
-                physics: const _TabScrollPhysics(),
-                itemCount: 4,
-                onPageChanged: (value) {
-                  draftFocus.unfocus();
-                  setState(() => page = value);
-                },
-                itemBuilder: (context, index) => tabContent(index),
+    builder: (context, _) => Scaffold(
+      backgroundColor: AppPalette.of(context).paper,
+      bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom == 0
+          ? Align(
+              heightFactor: 1,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 430),
+                child: navigation(),
               ),
+            )
+          : null,
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 430),
+          child: SafeArea(
+            bottom: false,
+            minimum: const EdgeInsets.only(top: 46),
+            child: PageView.builder(
+              key: const ValueKey('tab-pages'),
+              controller: pages,
+              pageSnapping: false,
+              physics: const _TabScrollPhysics(),
+              itemCount: 4,
+              onPageChanged: (value) {
+                draftFocus.unfocus();
+                setState(() => page = value);
+              },
+              itemBuilder: (context, index) => tabContent(index),
             ),
           ),
         ),
@@ -514,97 +512,93 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         color: c.paper,
         border: Border(top: BorderSide(color: c.line)),
       ),
-      child: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.only(bottom: 34),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(13, 10, 13, 5),
-          child: AnimatedBuilder(
-            animation: pages,
-            builder: (context, _) {
-              final position =
-                  pages.hasClients && pages.position.hasContentDimensions
-                  ? (pages.page ?? page.toDouble()).clamp(0.0, 3.0)
-                  : page.toDouble();
-              return Stack(
-                children: [
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: Align(
-                        alignment: Alignment(-1 + 2 * position / 3, 0),
-                        child: FractionallySizedBox(
-                          widthFactor: .25,
-                          heightFactor: 1,
-                          child: DecoratedBox(
-                            key: const ValueKey('nav-indicator'),
-                            decoration: BoxDecoration(
-                              color: c.navHighlight,
-                              borderRadius: BorderRadius.circular(c.navRadius),
-                            ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(13, 10, 13, 0),
+        child: AnimatedBuilder(
+          animation: pages,
+          builder: (context, _) {
+            final position =
+                pages.hasClients && pages.position.hasContentDimensions
+                ? (pages.page ?? page.toDouble()).clamp(0.0, 3.0)
+                : page.toDouble();
+            return Stack(
+              children: [
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Align(
+                      alignment: Alignment(-1 + 2 * position / 3, 0),
+                      child: FractionallySizedBox(
+                        widthFactor: .25,
+                        heightFactor: 1,
+                        child: DecoratedBox(
+                          key: const ValueKey('nav-indicator'),
+                          decoration: BoxDecoration(
+                            color: c.navHighlight,
+                            borderRadius: BorderRadius.circular(c.navRadius),
                           ),
                         ),
                       ),
                     ),
                   ),
-                  IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (var i = 0; i < labels.length; i++)
-                          Expanded(
-                            child: Semantics(
-                              selected: page == i,
-                              button: true,
-                              child: InkWell(
-                                key: ValueKey('nav-section-$i'),
-                                borderRadius: BorderRadius.circular(
-                                  c.navRadius,
+                ),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var i = 0; i < labels.length; i++)
+                        Expanded(
+                          child: Semantics(
+                            selected: page == i,
+                            button: true,
+                            child: InkWell(
+                              key: ValueKey('nav-section-$i'),
+                              borderRadius: BorderRadius.circular(
+                                c.navRadius,
+                              ),
+                              onTap: () => setPage(i),
+                              child: Container(
+                                constraints: const BoxConstraints(
+                                  minHeight: 61,
                                 ),
-                                onTap: () => setPage(i),
-                                child: Container(
-                                  constraints: const BoxConstraints(
-                                    minHeight: 61,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 2,
-                                    vertical: 4,
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      DesignIcon(
-                                        symbols[i],
-                                        size: 23,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 2,
+                                  vertical: 4,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    DesignIcon(
+                                      symbols[i],
+                                      size: 23,
+                                      color: navColor(c, position, i),
+                                    ),
+                                    const SizedBox(height: 7),
+                                    Text(
+                                      labels[i],
+                                      textAlign: TextAlign.center,
+                                      style: designText(
+                                        10,
                                         color: navColor(c, position, i),
+                                        weight: page == i
+                                            ? 550
+                                            : c.strict
+                                            ? 500
+                                            : 400,
                                       ),
-                                      const SizedBox(height: 7),
-                                      Text(
-                                        labels[i],
-                                        textAlign: TextAlign.center,
-                                        style: designText(
-                                          10,
-                                          color: navColor(c, position, i),
-                                          weight: page == i
-                                              ? 550
-                                              : c.strict
-                                              ? 500
-                                              : 400,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
                   ),
-                ],
-              );
-            },
-          ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

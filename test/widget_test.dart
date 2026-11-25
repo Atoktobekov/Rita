@@ -74,6 +74,44 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('System navigation insets keep the screen and sheets clear', (
+    tester,
+  ) async {
+    addTearDown(tester.view.resetPadding);
+    addTearDown(tester.view.resetViewPadding);
+    await open(tester);
+
+    final screen = find.byType(Scaffold);
+    final tab = find.byKey(const ValueKey('nav-section-0'));
+    expect(tester.getRect(tab).bottom, 844);
+
+    tester.view.padding = const FakeViewPadding(bottom: 48);
+    tester.view.viewPadding = const FakeViewPadding(bottom: 48);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(tab).bottom, 796);
+    expect(tester.getRect(screen).bottom, 796);
+    await tester.tap(find.byKey(const ValueKey('choose-date')));
+    await tester.pumpAndSettle();
+
+    final sheet = find.byType(BottomSheet);
+    expect(tester.getRect(sheet).bottom, 796);
+
+    tester.view.padding = const FakeViewPadding(bottom: 24);
+    tester.view.viewPadding = const FakeViewPadding(bottom: 24);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(tab).bottom, 820);
+    expect(tester.getRect(sheet).bottom, 820);
+
+    tester.view.physicalSize = const Size(844, 390);
+    tester.view.padding = const FakeViewPadding(right: 48);
+    tester.view.viewPadding = const FakeViewPadding(right: 48);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(screen).right, 796);
+    expect(tester.getRect(sheet).right, lessThanOrEqualTo(796));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('Date tabs keep today and tomorrow separate across midnight', (
     tester,
   ) async {
@@ -237,15 +275,28 @@ void main() {
     tester,
   ) async {
     await open(tester);
+    final calendarDate = find.byKey(const ValueKey('calendar-date'));
     await tester.tap(find.byKey(const ValueKey('choose-date')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('calendar-date')));
+    expect(find.text('Выберите день'), findsOneWidget);
+    expect(find.byType(DatePickerDialog), findsNothing);
+    expect(find.text('Открыть день'), findsNothing);
+
+    await tester.tap(calendarDate);
+    await tester.pumpAndSettle();
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+    await tester.tap(find.text('Отмена'));
+    await tester.pumpAndSettle();
+    expect(calendarDate, findsOneWidget);
+    expect(dayKey(planner.selected), '2026-12-31');
+
+    await tester.tap(calendarDate);
     await tester.pumpAndSettle();
     await tester.tap(find.text('15').first);
     await tester.tap(find.text('ОК'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Открыть день'));
-    await tester.pumpAndSettle();
+    expect(find.byType(DatePickerDialog), findsNothing);
+    expect(calendarDate, findsNothing);
     expect(dayKey(planner.selected), '2026-12-15');
     await quickAdd(tester, 'На другую дату');
     await tester.longPress(find.text('На другую дату'));

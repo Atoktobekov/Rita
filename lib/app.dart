@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'presentation/controllers/planner_controller.dart';
 import 'presentation/controllers/reminder_controller.dart';
@@ -113,6 +114,18 @@ class _DailyAppState extends State<DailyApp> {
       theme: makeTheme(Brightness.light),
       darkTheme: makeTheme(Brightness.dark),
       themeMode: appearance.mode,
+      builder: (context, child) {
+        final theme = Theme.of(context);
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: theme.brightness == Brightness.dark
+              ? SystemUiOverlayStyle.light
+              : SystemUiOverlayStyle.dark,
+          child: ColoredBox(
+            color: theme.scaffoldBackgroundColor,
+            child: SafeArea(top: false, child: child!),
+          ),
+        );
+      },
       home: HomePage(
         planner: widget.planner,
         reminder: widget.reminder,
