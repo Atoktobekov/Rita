@@ -31,8 +31,23 @@
 
   <title>Daily To-Do</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    #launch-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: #36022C url('icons/Icon-192.png') center / 224px no-repeat;
+    }
+  </style>
 </head>
 <body>
+  <div id="launch-screen" aria-hidden="true"></div>
+  <script>
+    window.addEventListener('flutter-first-frame', () => {
+      document.getElementById('launch-screen').remove();
+    }, { once: true });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
