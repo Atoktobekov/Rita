@@ -12,6 +12,7 @@ class AnimatedTaskList extends StatefulWidget {
     required this.onToggle,
     required this.onEdit,
     required this.onDelete,
+    this.onCopyToToday,
     this.busy = false,
     this.compact = false,
   });
@@ -20,6 +21,7 @@ class AnimatedTaskList extends StatefulWidget {
   final ValueChanged<Task> onToggle;
   final ValueChanged<Task> onEdit;
   final ValueChanged<Task> onDelete;
+  final ValueChanged<Task>? onCopyToToday;
   final bool busy;
   final bool compact;
 
@@ -123,6 +125,9 @@ class _AnimatedTaskListState extends State<AnimatedTaskList>
               compact: widget.compact,
               onToggle: widget.busy ? null : () => widget.onToggle(task),
               onEdit: widget.busy ? null : () => widget.onEdit(task),
+              onCopyToToday: widget.busy || widget.onCopyToToday == null
+                  ? null
+                  : () => widget.onCopyToToday!(task),
               onDelete: widget.busy ? null : () => widget.onDelete(task),
             ),
           ),

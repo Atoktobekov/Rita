@@ -233,6 +233,12 @@ void main() {
         const Offset(0, -220),
       );
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Месяц'));
+      await tester.tap(find.text('Месяц'));
+      await tester.pumpAndSettle();
+      final today = find.byKey(const ValueKey('chart-day-2027-01-02'));
+      expect(today.hitTestable(), findsOneWidget);
+      expect(tester.getCenter(day).dx, lessThan(tester.getCenter(today).dx));
       await tester.tap(day);
       await tester.pumpAndSettle();
       expect(
@@ -252,6 +258,14 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Исправленная'), findsOneWidget);
       expect(planner.tasks.single.title, 'Исправленная');
+      await tester.longPress(card('past'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Скопировать на сегодня'));
+      await tester.pumpAndSettle();
+      expect(planner.tasks.last.day, '2027-01-02');
+      expect(planner.tasks.last.title, 'Исправленная');
+      expect(planner.tasks.last.done, false);
+      expect(planner.tasks.first.done, true);
       Navigator.of(
         tester.element(find.byKey(const ValueKey('day-details-2027-01-01'))),
       ).pop();
@@ -274,7 +288,7 @@ void main() {
       await tester.tap(save);
       await tester.pumpAndSettle();
       expect(planner.tasks.last.day, '2026-12-31');
-      expect(planner.statistics.total, 2);
+      expect(planner.statistics.total, 3);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
@@ -296,9 +310,20 @@ void main() {
     expect(planner.tasks.single.done, true);
     await tester.longPress(card('past'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Скопировать на сегодня'));
+    await tester.pumpAndSettle();
+    expect(planner.tasks.last.day, '2027-01-02');
+    expect(planner.tasks.last.id, isNot('past'));
+    await tester.longPress(card('past'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('task-delete')));
     await tester.pumpAndSettle();
-    expect(planner.tasks, isEmpty);
+    expect(planner.tasks.single.day, '2027-01-02');
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.text('Задача удалена'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.text('Задача удалена'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

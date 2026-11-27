@@ -11,6 +11,7 @@ class TaskCard extends StatelessWidget {
     required this.onToggle,
     required this.onEdit,
     required this.onDelete,
+    this.onCopyToToday,
     this.compact = false,
   });
 
@@ -18,6 +19,7 @@ class TaskCard extends StatelessWidget {
   final VoidCallback? onToggle;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onCopyToToday;
   final bool compact;
 
   Future<void> _showActions(BuildContext context) async {
@@ -51,6 +53,12 @@ class TaskCard extends StatelessWidget {
                   ? null
                   : () => Navigator.pop(context, 'edit'),
             ),
+            if (onCopyToToday != null)
+              SheetAction(
+                icon: DesignSymbol.copy,
+                label: 'Скопировать на сегодня',
+                onTap: () => Navigator.pop(context, 'copy'),
+              ),
             SheetAction(
               key: const ValueKey('task-delete'),
               icon: DesignSymbol.trash,
@@ -66,6 +74,7 @@ class TaskCard extends StatelessWidget {
     );
     if (!context.mounted) return;
     if (action == 'edit') onEdit?.call();
+    if (action == 'copy') onCopyToToday?.call();
     if (action == 'delete') onDelete?.call();
   }
 

@@ -249,21 +249,19 @@ void main() {
     await tester.tap(find.text('Месяц'));
     await tester.pumpAndSettle();
     expect(find.text('02.12.2026 – 31.12.2026'), findsOneWidget);
-    final value = find.byKey(const ValueKey('chart-value-2026-12-02'));
-    expect(tester.widget<Text>(value).data, '1');
-    final chart = find.byKey(
-      PageStorageKey(
-        DateTimeRange(start: DateTime(2026, 12, 2), end: planner.today),
-      ),
+    final chart = find.byWidgetPredicate(
+      (widget) => widget is ListView && widget.scrollDirection == Axis.horizontal,
     );
     await tester.ensureVisible(chart);
+    expect(day('2026-12-31').hitTestable(), findsOneWidget);
     await tester.scrollUntilVisible(
-      day('2026-12-31'),
+      day('2026-12-02'),
       180,
       scrollable: find.descendant(of: chart, matching: find.byType(Scrollable)),
     );
     await tester.pumpAndSettle();
-    expect(day('2026-12-31').hitTestable(), findsOneWidget);
+    final value = find.byKey(const ValueKey('chart-value-2026-12-02'));
+    expect(tester.widget<Text>(value).data, '1');
 
     await reveal(tester, find.text('Период'));
     await tester.tap(find.text('Период'));

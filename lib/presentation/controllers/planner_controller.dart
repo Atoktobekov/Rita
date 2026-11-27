@@ -101,35 +101,50 @@ class PlannerController extends ChangeNotifier {
     _accept(await actions.restoreBackup());
   });
 
-  Future<TaskCopy> copyUnfinishedToTomorrow() => _mutate(() async {
+  Future<void> copyToToday(Task task) async {
+    final destination = dayKey(clock());
+    if (task.day.compareTo(destination) >= 0) {
+      throw StateError('Выберите задачу прошедшего дня');
+    }
+    await _copyTasks([task], destination);
+  }
+
+  Future<TaskCopy> copyUnfinishedToTomorrow() async {
     if (selected.isAfter(today)) {
       throw StateError('Выберите сегодняшний или прошедший день');
     }
-    final destination = dayKey(nextDay(today));
-    final ids = _tasks.map((t) => t.id).toSet();
-    var serial = DateTime.now().microsecondsSinceEpoch;
-    final copies = <Task>[];
-    for (final task in selectedTasks.where((t) => !t.done)) {
-      String id;
-      do {
-        id = 'copy-${serial++}';
-      } while (!ids.add(id));
-      copies.add(
-        Task(
-          id: id,
-          title: task.title,
-          day: destination,
-          category: task.category,
-        ),
-      );
-    }
-    if (copies.isNotEmpty) {
-      final next = [..._tasks, ...copies];
-      await actions.replaceAll(next);
-      _tasks = next;
-    }
-    return TaskCopy(copies);
-  });
+    return _copyTasks(
+      selectedTasks.where((task) => !task.done),
+      dayKey(nextDay(today)),
+    );
+  }
+
+  Future<TaskCopy> _copyTasks(Iterable<Task> tasks, String destination) =>
+      _mutate(() async {
+        final ids = _tasks.map((t) => t.id).toSet();
+        var serial = DateTime.now().microsecondsSinceEpoch;
+        final copies = <Task>[];
+        for (final task in tasks) {
+          String id;
+          do {
+            id = 'copy-${serial++}';
+          } while (!ids.add(id));
+          copies.add(
+            Task(
+              id: id,
+              title: task.title,
+              day: destination,
+              category: task.category,
+            ),
+          );
+        }
+        if (copies.isNotEmpty) {
+          final next = [..._tasks, ...copies];
+          await actions.replaceAll(next);
+          _tasks = next;
+        }
+        return TaskCopy(copies);
+      });
 
   Future<void> undoCopy(TaskCopy copy) => _mutate(() async {
     final byId = {for (final task in _tasks) task.id: task};

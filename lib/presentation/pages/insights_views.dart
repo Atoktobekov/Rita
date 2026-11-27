@@ -19,6 +19,7 @@ class ArchiveView extends StatefulWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onAdd,
+    required this.onCopyToToday,
     required this.onChooseDate,
     required this.busy,
     required this.onBackups,
@@ -32,6 +33,7 @@ class ArchiveView extends StatefulWidget {
   final ValueChanged<Task> onEdit;
   final ValueChanged<Task> onDelete;
   final ValueChanged<DateTime> onAdd;
+  final ValueChanged<Task> onCopyToToday;
   final VoidCallback onChooseDate;
 
   @override
@@ -198,6 +200,7 @@ class _ArchiveViewState extends State<ArchiveView> {
                     compact: true,
                     onToggle: widget.onToggle,
                     onEdit: widget.onEdit,
+                    onCopyToToday: widget.onCopyToToday,
                     onDelete: widget.onDelete,
                   ),
                   SizedBox(
@@ -252,6 +255,7 @@ class StatisticsView extends StatelessWidget {
     required this.statistics,
     required this.range,
     required this.period,
+    required this.monthScroll,
     required this.onPeriodChanged,
     required this.mode,
     required this.onModeChanged,
@@ -261,6 +265,7 @@ class StatisticsView extends StatelessWidget {
   final TaskStatistics statistics;
   final DateTimeRange range;
   final ChartPeriod period;
+  final ScrollController monthScroll;
   final ValueChanged<ChartPeriod> onPeriodChanged;
   final StatisticsMode mode;
   final ValueChanged<StatisticsMode> onModeChanged;
@@ -575,10 +580,13 @@ class StatisticsView extends StatelessWidget {
               final labelHeight =
                   MediaQuery.textScalerOf(context).scale(10) * 1.5;
               final top = math.max(33.0, labelHeight + 6);
+              final monthly = period == ChartPeriod.month;
               return SizedBox(
                 height: top + 100 + 9 + labelHeight.ceil() + 6,
                 child: ListView.builder(
-                  key: PageStorageKey(range),
+                  key: PageStorageKey((period, range)),
+                  controller: monthly ? monthScroll : null,
+                  reverse: monthly,
                   primary: false,
                   scrollDirection: Axis.horizontal,
                   physics: length <= 7
@@ -588,17 +596,18 @@ class StatisticsView extends StatelessWidget {
                   itemExtent: constraints.maxWidth / math.min(7, length),
                   itemCount: length,
                   itemBuilder: (context, index) {
+                    final dayIndex = monthly ? length - 1 - index : index;
                     final date = DateTime(
                       first.year,
                       first.month,
-                      first.day + index,
+                      first.day + dayIndex,
                     );
                     return bar(
                       context,
                       c,
                       statistics.progressOn(date),
                       scale,
-                      index == length - 1,
+                      dayIndex == length - 1,
                     );
                   },
                 ),

@@ -43,6 +43,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final draft = TextEditingController();
   final draftFocus = FocusNode();
   final scroll = ScrollController();
+  final monthScroll = ScrollController(keepScrollOffset: false);
   final pages = PageController();
   String? draftError;
   bool quickOpen = false;
@@ -74,6 +75,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     draft.dispose();
     draftFocus.dispose();
     scroll.dispose();
+    monthScroll.dispose();
     pages.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -160,6 +162,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
+        duration: const Duration(seconds: 5),
+        persist: false,
         content: const Text('Задача удалена'),
         action: SnackBarAction(
           label: 'Отменить',
@@ -167,6 +171,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ),
       ),
     );
+  }
+
+  Future<void> copyToToday(Task task) async {
+    if (await attempt(() => planner.copyToToday(task)) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Задача скопирована на сегодня')),
+      );
+    }
   }
 
   Future<void> showPlans() async {
@@ -239,10 +251,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> chooseDate() async {
     final date = await showDesignSheet<DateTime>(
       context,
-      builder: (_) => CalendarSheet(
-        initialDate: planner.selected,
-        openOnSelection: true,
-      ),
+      builder: (_) =>
+          CalendarSheet(initialDate: planner.selected, openOnSelection: true),
     );
     if (date != null && mounted) selectDay(date);
   }
@@ -345,6 +355,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   () => planner.save(task.copyWith(done: !task.done)),
                 ),
                 onEdit: (task) => edit(task, selectEditedDay: false),
+                onCopyToToday: day.isBefore(planner.today) ? copyToToday : null,
                 onDelete: delete,
               ),
               const SizedBox(height: 10),
@@ -385,6 +396,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           onEdit: edit,
           onDelete: delete,
           onAdd: addForDate,
+          onCopyToToday: copyToToday,
           onChooseDate: chooseDate,
           busy: planner.busy,
           onBackups: showBackups,
@@ -394,6 +406,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           statistics: planner.statistics,
           range: chartRange,
           period: chartPeriod,
+          monthScroll: monthScroll,
           onPeriodChanged: selectChartPeriod,
           mode: statisticsMode,
           onOpenDay: showDayDetails,
@@ -584,9 +597,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             button: true,
                             child: InkWell(
                               key: ValueKey('nav-section-$i'),
-                              borderRadius: BorderRadius.circular(
-                                c.navRadius,
-                              ),
+                              borderRadius: BorderRadius.circular(c.navRadius),
                               onTap: () => setPage(i),
                               child: Container(
                                 constraints: const BoxConstraints(
@@ -931,6 +942,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         AnimatedTaskList(
           key: ValueKey('day-tasks-${dayKey(planner.selected)}-$filter'),
           tasks: visible,
+          onCopyToToday: planner.selected.isBefore(planner.today)
+              ? copyToToday
+              : null,
           busy: planner.busy,
           onToggle: (task) =>
               attempt(() => planner.save(task.copyWith(done: !task.done))),
