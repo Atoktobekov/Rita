@@ -319,9 +319,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('task-delete')));
     await tester.pumpAndSettle();
     expect(planner.tasks.single.day, '2027-01-02');
-    await tester.pump(const Duration(seconds: 4));
+    await tester.pump(const Duration(seconds: 3));
     expect(find.text('Задача удалена'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
     expect(find.text('Задача удалена'), findsNothing);
     expect(tester.takeException(), isNull);

@@ -18,12 +18,14 @@ import 'support/figma_fixture.dart';
 
 void main() {
   testWidgets(
-    'Render four designs, both brightness modes and inherited sheets with bundled fonts',
+    'Render all designs, both brightness modes and inherited sheets with bundled fonts',
     (tester) async {
       await tester.runAsync(() async {
         for (final (family, path) in [
           ('Golos Text', 'assets/fonts/GolosText.ttf'),
           ('DM Sans', 'assets/fonts/DMSans.ttf'),
+          ('Cormorant Garamond', 'assets/fonts/CormorantGaramond.ttf'),
+          ('Cormorant Garamond', 'assets/fonts/CormorantGaramond-Italic.ttf'),
           ('Literata', 'assets/fonts/Literata.ttf'),
           ('MaterialIcons', 'fonts/MaterialIcons-Regular.otf'),
         ]) {
@@ -90,11 +92,20 @@ void main() {
               await tester.tap(find.byKey(ValueKey('nav-section-$index')));
               await tester.pumpAndSettle();
             }
+            final tab = find.byKey(PageStorageKey('tab-scroll-$index'));
+            final scrollable = find
+                .descendant(of: tab, matching: find.byType(Scrollable))
+                .first;
+            tester.state<ScrollableState>(scrollable).position.jumpTo(0);
+            await tester.pumpAndSettle();
             await capture('theme-${design.name}-${mode.name}-$name');
           }
           await tester.tap(find.byKey(const ValueKey('nav-section-0')));
           await tester.pumpAndSettle();
-          await tester.longPress(find.byType(TaskCard).first);
+          final firstTask = find.byType(TaskCard).first;
+          await tester.ensureVisible(firstTask);
+          await tester.pumpAndSettle();
+          await tester.longPress(firstTask);
           await tester.pumpAndSettle();
           await capture('theme-${design.name}-${mode.name}-menu');
           Navigator.of(

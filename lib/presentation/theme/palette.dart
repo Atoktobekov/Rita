@@ -5,7 +5,8 @@ enum AppDesign {
   warm('Уют', 'Персиковое тепло и мягкие формы'),
   strict('Фокус', 'Графит, лайм и чёткие линии'),
   play('Искра', 'Сирень, объём и маленькие победы'),
-  editorial('Лист', 'Бумага, чернила и книжные заголовки');
+  editorial('Лист', 'Бумага, чернила и книжные заголовки'),
+  pickMe('Пикми', 'Вишнёвые чернила, кремовая бумага и бантики');
 
   const AppDesign(this.title, this.description);
   final String title;
@@ -15,7 +16,7 @@ enum AppDesign {
       values.firstWhere((design) => design.name == value, orElse: () => warm);
 }
 
-/// Shared visual tokens from the four reference designs. Stored on ThemeData,
+/// Shared visual tokens for the application designs. Stored on ThemeData,
 /// so routes, dialogs and bottom sheets inherit the selected design as well.
 class AppPalette extends ThemeExtension<AppPalette> {
   const AppPalette._({
@@ -38,6 +39,40 @@ class AppPalette extends ThemeExtension<AppPalette> {
 
   factory AppPalette(bool dark, {AppDesign design = AppDesign.warm}) {
     return switch ((design, dark)) {
+      (AppDesign.pickMe, false) => AppPalette._(
+        design: design,
+        dark: dark,
+        paper: const Color(0xFFFFF8EF),
+        card: const Color(0xFFFAF0EC),
+        ink: const Color(0xFF502334),
+        muted: const Color(0xFF744655),
+        accent: const Color(0xFF802342),
+        cream: const Color(0xFFF6E4E5),
+        sage: const Color(0xFFF2DAE0),
+        sand: const Color(0xFFF8EDEF),
+        line: const Color(0xFFD6A3AE),
+        done: const Color(0xFFF4E8E6),
+        strong: const Color(0xFF9D3157),
+        positive: const Color(0xFFF6E4E5),
+        celebration: const Color(0xFFF2DAE0),
+      ),
+      (AppDesign.pickMe, true) => AppPalette._(
+        design: design,
+        dark: dark,
+        paper: const Color(0xFF291B29),
+        card: const Color(0xFF332030),
+        ink: const Color(0xFFF7DEDC),
+        muted: const Color(0xFFD5AEB9),
+        accent: const Color(0xFFE9A0B7),
+        cream: const Color(0xFF392435),
+        sage: const Color(0xFF513045),
+        sand: const Color(0xFF30202F),
+        line: const Color(0xFF82566D),
+        done: const Color(0xFF362633),
+        strong: const Color(0xFFF0A3BD),
+        positive: const Color(0xFF392435),
+        celebration: const Color(0xFF513045),
+      ),
       (AppDesign.warm, false) => AppPalette._(
         design: design,
         dark: dark,
@@ -198,8 +233,10 @@ class AppPalette extends ThemeExtension<AppPalette> {
       AppPalette(Theme.of(context).brightness == Brightness.dark);
 
   bool get lined => design == AppDesign.strict || design == AppDesign.editorial;
+  bool get pickMe => design == AppDesign.pickMe;
   bool get playful => design == AppDesign.play;
   double get radius => switch (design) {
+    AppDesign.pickMe => 7,
     AppDesign.warm => 17,
     AppDesign.strict => 5,
     AppDesign.play => 21,
@@ -207,6 +244,8 @@ class AppPalette extends ThemeExtension<AppPalette> {
   };
   double get navRadius => lined
       ? 4
+      : pickMe
+      ? 6
       : playful
       ? 19
       : 14;
@@ -220,7 +259,11 @@ class AppPalette extends ThemeExtension<AppPalette> {
   bool get editorial => design == AppDesign.editorial;
   bool get strict => design == AppDesign.strict;
   Color get action => design == AppDesign.editorial ? ink : accent;
-  Color get onAction => editorial || dark ? paper : ink;
+  Color get onAction => pickMe
+      ? (dark ? const Color(0xFF371726) : const Color(0xFFFFF7F3))
+      : editorial || dark
+      ? paper
+      : ink;
   Color get selectedSegment => dark ? accent : card;
   Color get onSelectedSegment => dark ? paper : ink;
   Color get hero => strict && !dark
@@ -229,37 +272,57 @@ class AppPalette extends ThemeExtension<AppPalette> {
       ? const Color(0xFFE9E0FA)
       : cream;
   Color get onHero => strict && !dark ? paper : ink;
-  Color get heroAccent => playful ? const Color(0xFFA58BDC) : accent;
-  TextStyle get heading => TextStyle(
-    fontFamily: editorial ? 'Literata' : 'Golos Text',
-    fontSize: strict
-        ? 33
-        : playful
-        ? 31
-        : 29,
-    height: 1.3,
-    letterSpacing: strict
-        ? -1.5
-        : playful
-        ? -1.2
-        : -1,
-    fontWeight: editorial
-        ? FontWeight.w400
-        : strict || playful
-        ? FontWeight.w700
-        : FontWeight.w600,
-    fontVariations: [
-      FontVariation(
-        'wght',
-        editorial
-            ? 400
-            : strict || playful
-            ? 750
-            : 600,
-      ),
-    ],
-    color: ink,
-  );
+  Color get heroAccent => pickMe
+      ? strong
+      : playful
+      ? const Color(0xFFA58BDC)
+      : accent;
+  static const pickMeFont = 'Cormorant Garamond';
+
+  Color pickMeChartBar({required bool latest}) => latest
+      ? (dark ? const Color(0xFFF5ABCD) : const Color(0xFF922B53))
+      : (dark ? const Color(0xFFC17C9F) : const Color(0xFFBA6885));
+
+  TextStyle get heading => pickMe
+      ? TextStyle(
+          fontFamily: pickMeFont,
+          fontSize: 36,
+          height: 1.08,
+          letterSpacing: -.8,
+          fontWeight: FontWeight.w700,
+          fontVariations: const [FontVariation('wght', 700)],
+          color: ink,
+        )
+      : TextStyle(
+          fontFamily: editorial ? 'Literata' : 'Golos Text',
+          fontSize: strict
+              ? 33
+              : playful
+              ? 31
+              : 29,
+          height: 1.3,
+          letterSpacing: strict
+              ? -1.5
+              : playful
+              ? -1.2
+              : -1,
+          fontWeight: editorial
+              ? FontWeight.w400
+              : strict || playful
+              ? FontWeight.w700
+              : FontWeight.w600,
+          fontVariations: [
+            FontVariation(
+              'wght',
+              editorial
+                  ? 400
+                  : strict || playful
+                  ? 750
+                  : 600,
+            ),
+          ],
+          color: ink,
+        );
 
   BoxDecoration panel({Color? color, bool flat = false}) => BoxDecoration(
     color: flat ? Colors.transparent : color ?? card,

@@ -30,9 +30,24 @@ enum DesignSymbol {
   leaf,
   coffee,
   trophy,
+  today,
+  bow,
 }
 
+const _pickMePaths = {
+  DesignSymbol.archive: '<path d="M5 8v12h14V8M3 4h18v4H3zM10 12h4" />',
+  DesignSymbol.chart: '<path d="M4 19.5h16M7 15v-4m5 4V5m5 10V8" />',
+  DesignSymbol.award:
+      '<path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.4l6.1-.9z" />',
+  DesignSymbol.calendar:
+      '<rect x="3.5" y="5.5" width="17" height="15" rx="2.5" /><path d="M7.5 3.5v4m9-4v4m-13 3h17m-13 4h2m4 0h2" />',
+};
+
 const _paths = {
+  DesignSymbol.today:
+      '<path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" /><path d="m8 12 2.5 2.5L16 9" />',
+  DesignSymbol.bow:
+      '<path d="M42 26C32 12 13 5 9 15s8 21 20 19c5-.5 9-2 12-4m5-4C54 13 71 4 78 13c8 10-7 22-18 21-6 0-11-2-13-4M41 29c-8 7-9 24-23 25l7-6-8-1c11-3 15-10 16-13m14-5c2 14 4 22 20 28l-4-8 10 1c-12-5-17-10-19-17" /><path d="M40 23c2-2 6-2 8 0l1 6c-1 4-8 5-10 1zM16 17c7-2 15.5 3 21 8m34-9c-7-1-13 4-19 9" />',
   DesignSymbol.sun:
       '<circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" />',
   DesignSymbol.archive:
@@ -92,13 +107,16 @@ class DesignIcon extends StatelessWidget {
   final double stroke;
 
   @override
-  Widget build(BuildContext context) => SvgPicture.string(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="$stroke" stroke-linecap="round" stroke-linejoin="round">${_paths[symbol]}</svg>',
-    width: size,
-    height: size,
-    colorFilter: ColorFilter.mode(
-      color ?? AppPalette.of(context).ink,
-      BlendMode.srcIn,
-    ),
-  );
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final path =
+        (palette.pickMe ? _pickMePaths[symbol] : null) ?? _paths[symbol];
+    final bow = symbol == DesignSymbol.bow;
+    return SvgPicture.string(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="${bow ? '0 0 88 64' : '0 0 24 24'}" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="${bow ? 2.1 * stroke : stroke}" stroke-linecap="round" stroke-linejoin="round">${path}</svg>',
+      width: size,
+      height: size,
+      colorFilter: ColorFilter.mode(color ?? palette.ink, BlendMode.srcIn),
+    );
+  }
 }

@@ -21,9 +21,7 @@ class TaskBackup {
         data['version'] != 1 ||
         data['tasks'] is! List ||
         data['createdAt'] is! String) {
-      throw const FormatException(
-        'Это не поддерживаемая копия задач Daily To-Do',
-      );
+      throw const FormatException('Это не поддерживаемая копия задач Rita');
     }
     final createdAt = DateTime.tryParse(data['createdAt'] as String);
     if (createdAt == null) {

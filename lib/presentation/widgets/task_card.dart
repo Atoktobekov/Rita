@@ -84,7 +84,9 @@ class TaskCard extends StatelessWidget {
     final actions = onEdit != null || onDelete != null
         ? () => _showActions(context)
         : null;
-    final completed = c.strict
+    final completed = c.pickMe
+        ? c.accent
+        : c.strict
         ? c.ink
         : c.playful
         ? const Color(0xFFA995CD)
@@ -116,7 +118,9 @@ class TaskCard extends StatelessWidget {
                   ),
                 )
               : Border.all(
-                  color: task.done && !c.playful ? Colors.transparent : c.line,
+                  color: task.done && !c.playful && !c.pickMe
+                      ? Colors.transparent
+                      : c.line,
                 ),
           boxShadow: c.playful && !task.done
               ? [BoxShadow(color: c.line, offset: const Offset(0, 3))]
@@ -140,7 +144,9 @@ class TaskCard extends StatelessWidget {
                     : 50,
               ),
               padding: EdgeInsets.fromLTRB(
-                c.editorial
+                c.pickMe
+                    ? 20
+                    : c.editorial
                     ? 1
                     : c.strict || compact
                     ? 12
@@ -155,6 +161,13 @@ class TaskCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
+                  if (c.pickMe)
+                    Container(
+                      width: 1,
+                      height: 35,
+                      margin: const EdgeInsets.only(right: 9),
+                      color: c.line,
+                    ),
                   Expanded(
                     child: Padding(
                       padding: EdgeInsets.symmetric(
@@ -199,7 +212,9 @@ class TaskCard extends StatelessWidget {
                           border: task.done
                               ? null
                               : Border.all(
-                                  color: c.muted.withValues(alpha: .45),
+                                  color: c.pickMe
+                                      ? c.muted
+                                      : c.muted.withValues(alpha: .45),
                                   width: 1.4,
                                 ),
                         ),
@@ -208,7 +223,11 @@ class TaskCard extends StatelessWidget {
                                 DesignSymbol.check,
                                 size: 13,
                                 stroke: 2,
-                                color: c.playful ? Colors.white : c.paper,
+                                color: c.pickMe
+                                    ? c.onAction
+                                    : c.playful
+                                    ? Colors.white
+                                    : c.paper,
                               )
                             : null,
                       ),

@@ -58,9 +58,9 @@ void main() {
         design: AppDesign.fromStorage(box.get('design_theme')),
         save: (mode) => box.put('theme_mode', mode.name),
       );
-      expect(reopened.design, AppDesign.editorial);
+      expect(reopened.design, AppDesign.pickMe);
       await reopened.update(ThemeMode.light);
-      expect(box.get('design_theme'), 'editorial');
+      expect(box.get('design_theme'), 'pickMe');
       appearance.dispose();
       reopened.dispose();
       await Hive.close();
@@ -88,7 +88,7 @@ void main() {
   );
 
   test(
-    'The eight combinations use readable colors and have distinct dark backgrounds',
+    'All design and brightness combinations use readable colors and have distinct dark backgrounds',
     () {
       double contrast(Color a, Color b) {
         final first = a.computeLuminance(), second = b.computeLuminance();
@@ -124,6 +124,18 @@ void main() {
             contrast(palette.onSelectedSegment, palette.selectedSegment),
             greaterThanOrEqualTo(4.5),
           );
+          if (palette.pickMe) {
+            expect(
+              contrast(palette.strong, palette.cream),
+              greaterThanOrEqualTo(4.5),
+            );
+            for (final latest in [false, true]) {
+              expect(
+                contrast(palette.pickMeChartBar(latest: latest), palette.card),
+                greaterThanOrEqualTo(3),
+              );
+            }
+          }
           if (dark) {
             darkBackgrounds.add(palette.paper);
             expect(

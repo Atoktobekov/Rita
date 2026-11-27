@@ -18,6 +18,11 @@ import 'insights_views.dart';
 import 'backup_page.dart';
 import 'plans_page.dart';
 
+class _AppSnackBar extends SnackBar {
+  const _AppSnackBar({required super.content, super.action})
+    : super(duration: const Duration(milliseconds: 3300), persist: false);
+}
+
 class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
@@ -43,7 +48,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final draft = TextEditingController();
   final draftFocus = FocusNode();
   final scroll = ScrollController();
-  final monthScroll = ScrollController(keepScrollOffset: false);
+  final chartScroll = ScrollController(keepScrollOffset: false);
   final pages = PageController();
   String? draftError;
   bool quickOpen = false;
@@ -75,7 +80,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     draft.dispose();
     draftFocus.dispose();
     scroll.dispose();
-    monthScroll.dispose();
+    chartScroll.dispose();
     pages.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -88,7 +93,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          const _AppSnackBar(
             content: Text(
               'Не удалось сохранить изменения. Попробуйте ещё раз.',
             ),
@@ -161,9 +166,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (!await attempt(() => planner.delete(task)) || !mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        duration: const Duration(seconds: 5),
-        persist: false,
+      _AppSnackBar(
         content: const Text('Задача удалена'),
         action: SnackBarAction(
           label: 'Отменить',
@@ -176,7 +179,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> copyToToday(Task task) async {
     if (await attempt(() => planner.copyToToday(task)) && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Задача скопирована на сегодня')),
+        const _AppSnackBar(content: Text('Задача скопирована на сегодня')),
       );
     }
   }
@@ -211,7 +214,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final undo = moved!;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      _AppSnackBar(
         content: Text('Скопировано на завтра: ${undo.tasks.length}'),
         action: SnackBarAction(
           label: 'Отменить',
@@ -221,7 +224,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             } catch (_) {
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+                const _AppSnackBar(
                   content: Text(
                     'Не удалось отменить копирование. Задачи могли измениться — проверьте план на завтра.',
                   ),
@@ -281,6 +284,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       if (!mounted || picked == null) return;
       customChartRange = picked;
     }
+    if (chartScroll.hasClients) chartScroll.jumpTo(0);
     setState(() => chartPeriod = period);
   }
 
@@ -406,7 +410,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           statistics: planner.statistics,
           range: chartRange,
           period: chartPeriod,
-          monthScroll: monthScroll,
+          chartScroll: chartScroll,
           onPeriodChanged: selectChartPeriod,
           mode: statisticsMode,
           onOpenDay: showDayDetails,
@@ -466,7 +470,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   );
 
   Widget wordmark(AppPalette c, {required bool day}) => Container(
-    height: 16 + MediaQuery.textScalerOf(context).scale(28),
+    height: 16 + MediaQuery.textScalerOf(context).scale(c.pickMe ? 36 : 28),
     margin: EdgeInsets.only(
       bottom: day
           ? c.editorial
@@ -475,7 +479,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           : 0,
     ),
     padding: EdgeInsets.only(bottom: c.editorial ? 9 : 0),
-    decoration: c.editorial
+    decoration: c.editorial || c.pickMe
         ? BoxDecoration(
             border: Border(bottom: BorderSide(color: c.line)),
           )
@@ -494,7 +498,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   'Rita',
                   style:
                       designText(
-                        c.strict
+                        c.pickMe
+                            ? 38
+                            : c.strict
                             ? 23
                             : c.editorial
                             ? 29
@@ -507,7 +513,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             : c.editorial
                             ? -1.8
                             : -1.5,
-                        font: c.editorial ? 'Literata' : 'DM Sans',
+                        font: c.pickMe
+                            ? AppPalette.pickMeFont
+                            : c.editorial
+                            ? 'Literata'
+                            : 'DM Sans',
                       ).copyWith(
                         fontStyle: c.editorial
                             ? FontStyle.italic
@@ -522,16 +532,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         Expanded(
           flex: 2,
           child: Text(
-            'Routine Assistant',
+            c.pickMe ? 'ВИШНЁВЫЙ БАНТИК' : 'Routine Assistant',
             textAlign: TextAlign.right,
             style: designText(
-              c.strict ? 8 : 11,
+              c.strict || c.pickMe ? 9 : 11,
               spacing: c.strict ? 1 : 0,
               color: c.muted,
             ),
           ),
         ),
-        if (!c.editorial) ...[
+        if (!c.editorial && !c.pickMe) ...[
           const SizedBox(width: 7),
           Container(
             width: 5,
@@ -612,7 +622,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     DesignIcon(
-                                      symbols[i],
+                                      c.pickMe && i == 0
+                                          ? DesignSymbol.today
+                                          : symbols[i],
                                       size: 23,
                                       color: navColor(c, position, i),
                                     ),
@@ -649,7 +661,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Color navColor(AppPalette c, num position, int tab) => Color.lerp(
     c.muted,
-    c.playful
+    c.playful || c.pickMe
         ? c.strong
         : c.strict && c.dark
         ? c.paper
@@ -675,6 +687,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _ => 'Хороший день',
     };
     final subhead = switch (c.design) {
+      AppDesign.pickMe => 'У меня на тебя маленькие планы.',
       AppDesign.play => 'Не всё сразу. По одной победе.',
       AppDesign.editorial => 'Оставьте место для важного.',
       _ => 'Маленькие шаги к большому.',
@@ -704,6 +717,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   ? const Color(0xFFECE5FA)
                   : c.cream,
               borderRadius: BorderRadius.circular(c.radius),
+              border: c.pickMe ? Border.all(color: c.line) : null,
             ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -757,7 +771,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     ? 3
                     : 4,
                 borderRadius: BorderRadius.circular(8),
-                color: c.strict
+                color: c.pickMe
+                    ? c.strong
+                    : c.strict
                     ? c.accent
                     : c.playful
                     ? const Color(0xFFA58BDC)
@@ -800,7 +816,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         key: const ValueKey('day-selector'),
         padding: EdgeInsets.all(c.strict ? 0 : 3),
         decoration: BoxDecoration(
-          color: c.editorial ? null : c.sand,
+          color: c.editorial || c.pickMe ? null : c.sand,
           borderRadius: BorderRadius.circular(c.lined ? 4 : 14),
           border: c.lined ? Border.all(color: c.line) : null,
         ),
@@ -836,12 +852,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ),
       ),
       DesignHeader(
-        eyebrow: DateFormat(
-          'EEEE, d MMMM',
-          'ru',
-        ).format(planner.selected).toUpperCase(),
-        title: isToday ? headline : 'Новый день',
-        subtitle: subhead,
+        eyebrow: c.pickMe
+            ? 'ПЛАН НА ДЕНЬ'
+            : DateFormat(
+                'EEEE, d MMMM',
+                'ru',
+              ).format(planner.selected).toUpperCase(),
+        title: c.pickMe
+            ? capitalize(
+                DateFormat('EEEE, d MMMM', 'ru').format(planner.selected),
+              )
+            : isToday
+            ? headline
+            : 'Новый день',
+        subtitle: !c.pickMe || isToday ? subhead : null,
         day: true,
         mark: c.design == AppDesign.warm
             ? const DesignIcon(
@@ -913,11 +937,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   borderRadius: BorderRadius.circular(45),
                 ),
                 alignment: Alignment.center,
-                child: const DesignIcon(
-                  DesignSymbol.sun,
-                  size: 56,
-                  color: Color(0xFFC6A06F),
-                ),
+                child: c.pickMe
+                    ? DesignIcon(DesignSymbol.bow, size: 69, color: c.strong)
+                    : const DesignIcon(
+                        DesignSymbol.sun,
+                        size: 56,
+                        color: Color(0xFFC6A06F),
+                      ),
               ),
               const SizedBox(height: 21),
               Text(
@@ -930,7 +956,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               if (tasks.isEmpty) ...[
                 const SizedBox(height: 10),
                 Text(
-                  'Никакой спешки. Добавьте то,\nчто действительно важно.',
+                  c.pickMe
+                      ? 'Запишем одно маленькое дело?'
+                      : 'Никакой спешки. Добавьте то,\nчто действительно важно.',
                   textAlign: TextAlign.center,
                   style: designText(12, height: 1.8, color: c.muted),
                 ),
@@ -950,6 +978,25 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               attempt(() => planner.save(task.copyWith(done: !task.done))),
           onEdit: edit,
           onDelete: delete,
+        ),
+      if (c.pickMe && tasks.isNotEmpty && done == tasks.length)
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Semantics(
+            liveRegion: true,
+            child: Row(
+              children: [
+                DesignIcon(DesignSymbol.bow, size: 26, color: c.strong),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'На этот день всё.',
+                    style: designText(12, color: c.strong),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       SizedBox(
         height: quickOpen
@@ -1028,7 +1075,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           child: Center(
                             child: DesignIcon(
                               DesignSymbol.arrow,
-                              color: c.dark ? c.paper : c.ink,
+                              color: c.pickMe
+                                  ? c.onAction
+                                  : c.dark
+                                  ? c.paper
+                                  : c.ink,
                             ),
                           ),
                         ),
@@ -1056,7 +1107,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             : () {
                 if (done == tasks.length) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Нет незавершённых задач')),
+                    const _AppSnackBar(
+                      content: Text('Нет незавершённых задач'),
+                    ),
                   );
                 } else {
                   copyUnfinished();
@@ -1107,16 +1160,29 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     required VoidCallback onTap,
   }) {
     final c = AppPalette.of(context);
-    final ink = selected ? (c.lined ? c.paper : c.onSelectedSegment) : c.muted;
-    final radius = BorderRadius.circular(
-      c.strict
-          ? 3
-          : c.editorial
-          ? 2
-          : label == null
-          ? 0
-          : 10,
-    );
+    final ink = selected
+        ? (c.pickMe
+              ? c.ink
+              : c.lined
+              ? c.paper
+              : c.onSelectedSegment)
+        : c.muted;
+    final radius = c.pickMe
+        ? BorderRadius.only(
+            topLeft: const Radius.circular(5),
+            topRight: const Radius.circular(5),
+            bottomRight: const Radius.circular(5),
+            bottomLeft: Radius.circular(selected ? 12 : 5),
+          )
+        : BorderRadius.circular(
+            c.strict
+                ? 3
+                : c.editorial
+                ? 2
+                : label == null
+                ? 0
+                : 10,
+          );
     return Semantics(
       selected: selected,
       button: true,
@@ -1125,10 +1191,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
           color: selected
-              ? (c.lined && !c.dark ? c.ink : c.selectedSegment)
+              ? (c.pickMe
+                    ? c.cream
+                    : c.lined && !c.dark
+                    ? c.ink
+                    : c.selectedSegment)
               : null,
           borderRadius: radius,
-          boxShadow: selected && !c.lined
+          border: c.pickMe
+              ? Border.all(color: selected ? c.strong : c.line)
+              : null,
+          boxShadow: selected && !c.lined && !c.pickMe
               ? const [
                   BoxShadow(
                     color: Color(0x05000000),
@@ -1147,20 +1220,34 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             child: Container(
               constraints: const BoxConstraints(minHeight: 48),
               alignment: Alignment.center,
-              decoration: label == null
+              decoration: label == null && !c.pickMe
                   ? BoxDecoration(
                       border: Border(left: BorderSide(color: c.line)),
                     )
                   : null,
               child: label == null
                   ? DesignIcon(DesignSymbol.calendar, size: 21, color: ink)
-                  : Text(
-                      label,
-                      style: designText(
-                        13,
-                        color: ink,
-                        weight: selected ? 550 : 400,
-                      ),
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (c.pickMe && selected)
+                          DesignIcon(
+                            DesignSymbol.bow,
+                            size: 22,
+                            color: c.strong,
+                          ),
+                        Flexible(
+                          child: Text(
+                            label,
+                            textAlign: TextAlign.center,
+                            style: designText(
+                              13,
+                              color: ink,
+                              weight: selected ? 550 : 400,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
             ),
           ),

@@ -250,7 +250,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('02.12.2026 – 31.12.2026'), findsOneWidget);
     final chart = find.byWidgetPredicate(
-      (widget) => widget is ListView && widget.scrollDirection == Axis.horizontal,
+      (widget) =>
+          widget is ListView && widget.scrollDirection == Axis.horizontal,
     );
     await tester.ensureVisible(chart);
     expect(day('2026-12-31').hitTestable(), findsOneWidget);
@@ -286,7 +287,7 @@ void main() {
     );
     await tester.enterText(
       fields.first,
-      strings.formatCompactDate(DateTime(2026, 11, 30)),
+      strings.formatCompactDate(DateTime(2026, 11, 15)),
     );
     await tester.enterText(
       fields.last,
@@ -294,8 +295,10 @@ void main() {
     );
     await tester.tap(find.text(strings.okButtonLabel));
     await tester.pumpAndSettle();
-    expect(find.text('30.11.2026 – 02.12.2026'), findsOneWidget);
-    expect(day('2026-11-30'), findsOneWidget);
+    expect(find.text('15.11.2026 – 02.12.2026'), findsOneWidget);
+    expect(day('2026-11-15'), findsNothing);
+    await tester.ensureVisible(chart);
+    expect(day('2026-12-02').hitTestable(), findsOneWidget);
     expect(day('2026-12-01'), findsOneWidget);
     expect(tester.widget<Text>(value).data, '1');
     expect(day('2026-12-03'), findsNothing);
@@ -304,7 +307,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('nav-section-2')));
     await tester.pumpAndSettle();
-    expect(find.text('30.11.2026 – 02.12.2026'), findsOneWidget);
+    expect(find.text('15.11.2026 – 02.12.2026'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 

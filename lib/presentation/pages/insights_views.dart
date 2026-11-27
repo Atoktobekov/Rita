@@ -166,7 +166,11 @@ class _ArchiveViewState extends State<ArchiveView> {
                             : c.strict
                             ? (showBadge ? 21 : 23)
                             : (showBadge ? 14 : 16),
-                        font: c.editorial ? 'Literata' : 'DM Sans',
+                        font: c.pickMe
+                            ? AppPalette.pickMeFont
+                            : c.editorial
+                            ? 'Literata'
+                            : 'DM Sans',
                         spacing: c.strict ? -1 : 0,
                         color: c.strict && showBadge && c.dark
                             ? c.paper
@@ -255,7 +259,7 @@ class StatisticsView extends StatelessWidget {
     required this.statistics,
     required this.range,
     required this.period,
-    required this.monthScroll,
+    required this.chartScroll,
     required this.onPeriodChanged,
     required this.mode,
     required this.onModeChanged,
@@ -265,7 +269,7 @@ class StatisticsView extends StatelessWidget {
   final TaskStatistics statistics;
   final DateTimeRange range;
   final ChartPeriod period;
-  final ScrollController monthScroll;
+  final ScrollController chartScroll;
   final ValueChanged<ChartPeriod> onPeriodChanged;
   final StatisticsMode mode;
   final ValueChanged<StatisticsMode> onModeChanged;
@@ -286,7 +290,7 @@ class StatisticsView extends StatelessWidget {
           decoration: BoxDecoration(
             color: c.hero,
             borderRadius: BorderRadius.circular(c.radius),
-            border: c.editorial ? Border.all(color: c.line) : null,
+            border: c.editorial || c.pickMe ? Border.all(color: c.line) : null,
           ),
           child: Row(
             children: [
@@ -307,14 +311,22 @@ class StatisticsView extends StatelessWidget {
                             text: '%',
                             style: designText(
                               25,
-                              font: c.editorial ? 'Literata' : 'DM Sans',
+                              font: c.pickMe
+                                  ? AppPalette.pickMeFont
+                                  : c.editorial
+                                  ? 'Literata'
+                                  : 'DM Sans',
                             ),
                           ),
                         ],
                       ),
                       style: designText(
                         c.editorial ? 43 : 49,
-                        font: c.editorial ? 'Literata' : 'DM Sans',
+                        font: c.pickMe
+                            ? AppPalette.pickMeFont
+                            : c.editorial
+                            ? 'Literata'
+                            : 'DM Sans',
                         weight: c.editorial ? 400 : 500,
                         height: 1.2,
                         spacing: -2,
@@ -323,7 +335,9 @@ class StatisticsView extends StatelessWidget {
                     ),
                     const SizedBox(height: 7),
                     Text(
-                      'Хороший ритм. Так держать.',
+                      c.pickMe
+                          ? 'Маленькие дела складываются в большое.'
+                          : 'Хороший ритм. Так держать.',
                       style: designText(
                         11,
                         color: c.strict && !c.dark
@@ -345,11 +359,21 @@ class StatisticsView extends StatelessWidget {
                     : c.inkOpacity(.07),
                 rounded: false,
                 child: Transform.rotate(
-                  angle: c.playful ? math.pi / 15 : -math.pi / 4,
+                  angle: c.pickMe
+                      ? 0
+                      : c.playful
+                      ? math.pi / 15
+                      : -math.pi / 4,
                   child: DesignIcon(
-                    c.playful ? DesignSymbol.star : DesignSymbol.arrow,
+                    c.pickMe
+                        ? DesignSymbol.bow
+                        : c.playful
+                        ? DesignSymbol.star
+                        : DesignSymbol.arrow,
                     size: 31,
-                    color: c.strict
+                    color: c.pickMe
+                        ? c.strong
+                        : c.strict
                         ? c.accent
                         : c.playful
                         ? const Color(0xFF9174BD)
@@ -435,7 +459,11 @@ class StatisticsView extends StatelessWidget {
                   text: suffix,
                   style: designText(
                     16,
-                    font: c.editorial ? 'Literata' : 'DM Sans',
+                    font: c.pickMe
+                        ? AppPalette.pickMeFont
+                        : c.editorial
+                        ? 'Literata'
+                        : 'DM Sans',
                   ),
                 ),
             ],
@@ -444,7 +472,11 @@ class StatisticsView extends StatelessWidget {
             28,
             height: 1.5,
             weight: c.editorial ? 400 : 500,
-            font: c.editorial ? 'Literata' : 'DM Sans',
+            font: c.pickMe
+                ? AppPalette.pickMeFont
+                : c.editorial
+                ? 'Literata'
+                : 'DM Sans',
           ),
         ),
         const SizedBox(height: 4),
@@ -509,12 +541,36 @@ class StatisticsView extends StatelessWidget {
                 ChoiceChip(
                   label: Text(option.label),
                   selected: option == period,
-                  showCheckmark: false,
+                  showCheckmark: true,
+                  checkmarkColor: c.pickMe ? c.onAction : c.paper,
+                  shape: c.pickMe
+                      ? RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(c.radius),
+                        )
+                      : null,
+                  chipAnimationStyle: ChipAnimationStyle(
+                    selectAnimation: AnimationStyle(
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
+                  backgroundColor: c.card,
+                  side: BorderSide(
+                    color: c.pickMe
+                        ? (option == period ? c.accent : c.line)
+                        : option == period
+                        ? c.ink
+                        : c.muted,
+                  ),
                   onSelected: (_) => onPeriodChanged(option),
-                  selectedColor: c.selectedSegment,
+                  selectedColor: c.pickMe ? c.accent : c.ink,
                   labelStyle: designText(
                     12,
-                    color: option == period ? c.onSelectedSegment : c.ink,
+                    color: option == period
+                        ? (c.pickMe ? c.onAction : c.paper)
+                        : c.ink,
                   ),
                 ),
             ],
@@ -580,13 +636,13 @@ class StatisticsView extends StatelessWidget {
               final labelHeight =
                   MediaQuery.textScalerOf(context).scale(10) * 1.5;
               final top = math.max(33.0, labelHeight + 6);
-              final monthly = period == ChartPeriod.month;
+              final latestFirst = length > 7;
               return SizedBox(
                 height: top + 100 + 9 + labelHeight.ceil() + 6,
                 child: ListView.builder(
                   key: PageStorageKey((period, range)),
-                  controller: monthly ? monthScroll : null,
-                  reverse: monthly,
+                  controller: chartScroll,
+                  reverse: latestFirst,
                   primary: false,
                   scrollDirection: Axis.horizontal,
                   physics: length <= 7
@@ -596,7 +652,7 @@ class StatisticsView extends StatelessWidget {
                   itemExtent: constraints.maxWidth / math.min(7, length),
                   itemCount: length,
                   itemBuilder: (context, index) {
-                    final dayIndex = monthly ? length - 1 - index : index;
+                    final dayIndex = latestFirst ? length - 1 - index : index;
                     final date = DateTime(
                       first.year,
                       first.month,
@@ -639,7 +695,9 @@ class StatisticsView extends StatelessWidget {
     final count = mode == StatisticsMode.count;
     final ratio = count ? day.completed / scale : day.ratio;
     final dayId = dayKey(day.day);
-    final color = c.strict
+    final color = c.pickMe
+        ? c.pickMeChartBar(latest: last)
+        : c.strict
         ? last
               ? c.ink
               : c.dark
@@ -687,7 +745,7 @@ class StatisticsView extends StatelessWidget {
                     width: 31,
                     decoration: BoxDecoration(
                       color: color,
-                      borderRadius: c.lined
+                      borderRadius: c.lined || c.pickMe
                           ? BorderRadius.circular(1)
                           : const BorderRadius.vertical(
                               top: Radius.circular(6),
@@ -763,26 +821,31 @@ class AwardsView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DesignHeader(
-          eyebrow: 'ЕСТЬ ЧЕМ ГОРДИТЬСЯ',
+          eyebrow: c.pickMe ? 'СТРАНИЦА ДНЕВНИКА' : 'ЕСТЬ ЧЕМ ГОРДИТЬСЯ',
           action: IconButton(
             tooltip: 'Настройки',
             onPressed: onSettings,
             icon: Icon(Icons.settings_outlined, size: 22, color: c.muted),
           ),
           title: c.editorial ? 'Мои открытия' : 'Ачивки',
-          subtitle: c.playful
+          subtitle: c.pickMe
+              ? 'Маленькие победы, которые хочется сохранить.'
+              : c.playful
               ? 'Обычные дела. Необычный ты.'
               : 'Не гонка. Ваша личная коллекция.',
-          mark: const DesignIcon(
-            DesignSymbol.star,
-            size: 28,
-            color: Color(0xFFD7A76C),
-          ),
+          mark: c.pickMe
+              ? DesignIcon(DesignSymbol.bow, size: 36, color: c.strong)
+              : const DesignIcon(
+                  DesignSymbol.star,
+                  size: 28,
+                  color: Color(0xFFD7A76C),
+                ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
           decoration: BoxDecoration(
             color: c.cream,
+            border: c.pickMe ? Border.all(color: c.line) : null,
             borderRadius: BorderRadius.circular(c.editorial ? 3 : c.radius),
           ),
           child: Row(
@@ -853,7 +916,7 @@ class AwardsView extends StatelessWidget {
                 : c.card
           : c.sand,
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: c.line),
+        side: BorderSide(color: c.pickMe && award.unlocked ? c.strong : c.line),
         borderRadius: radius,
       ),
       child: InkWell(
@@ -890,7 +953,9 @@ class AwardsView extends StatelessWidget {
                   ),
                   child: Text(
                     award.unlocked
-                        ? 'Уже в вашей коллекции'
+                        ? (c.pickMe
+                              ? 'Уже в твоём дневнике'
+                              : 'Уже в вашей коллекции')
                         : 'Всё впереди. В своём ритме.',
                     textAlign: TextAlign.center,
                     style: designText(12, color: c.muted),
@@ -917,13 +982,18 @@ class AwardsView extends StatelessWidget {
               Text(
                 award.title,
                 textAlign: TextAlign.center,
-                style: designText(
-                  12,
-                  height: 1.4,
-                  weight: c.editorial ? 500 : 550,
-                  font: c.editorial ? 'Literata' : 'Golos Text',
-                  color: award.unlocked ? c.ink : c.muted,
-                ),
+                style: c.pickMe
+                    ? c.heading.copyWith(
+                        fontSize: 19,
+                        color: award.unlocked ? c.ink : c.muted,
+                      )
+                    : designText(
+                        12,
+                        height: 1.4,
+                        weight: c.editorial ? 500 : 550,
+                        font: c.editorial ? 'Literata' : 'Golos Text',
+                        color: award.unlocked ? c.ink : c.muted,
+                      ),
               ),
               const SizedBox(height: 5),
               ConstrainedBox(
@@ -965,14 +1035,18 @@ class AwardsView extends StatelessWidget {
       _ => (const Color(0xFFFFE1B5), const Color(0xFFA4753E)),
     };
     final size = detail ? 94.0 : 57.0;
-    final fill = !award.unlocked
+    final fill = c.pickMe
+        ? (award.unlocked ? c.cream : c.card)
+        : !award.unlocked
         ? c.line
         : c.strict
         ? c.accent
         : c.editorial
         ? const Color(0xFFE3E9E4)
         : background;
-    final iconColor = !award.unlocked
+    final iconColor = c.pickMe
+        ? (award.unlocked ? c.strong : c.muted)
+        : !award.unlocked
         ? c.muted
         : c.strict
         ? (c.dark ? c.paper : c.ink)
@@ -1009,7 +1083,9 @@ class AwardsView extends StatelessWidget {
                         ? 21
                         : size / 2,
                   ),
-                  border: c.editorial
+                  border: c.pickMe
+                      ? Border.all(color: award.unlocked ? c.strong : c.line)
+                      : c.editorial
                       ? Border.all(
                           color: award.unlocked
                               ? const Color(0xFFB6C6BD)
@@ -1024,7 +1100,7 @@ class AwardsView extends StatelessWidget {
                 ),
               ),
             ),
-            if (c.editorial)
+            if (c.editorial || c.pickMe)
               Positioned.fill(
                 left: 3,
                 right: 3,
@@ -1033,7 +1109,26 @@ class AwardsView extends StatelessWidget {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: c.paper, width: 3),
+                    border: Border.all(
+                      color: c.pickMe ? c.line : c.paper,
+                      width: c.pickMe ? 1 : 3,
+                    ),
+                  ),
+                ),
+              ),
+            if (c.pickMe && award.unlocked)
+              Positioned(
+                right: -4,
+                bottom: -3,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: c.card,
+                    shape: BoxShape.circle,
+                  ),
+                  child: DesignIcon(
+                    DesignSymbol.bow,
+                    size: detail ? 36 : 25,
+                    color: c.strong,
                   ),
                 ),
               ),

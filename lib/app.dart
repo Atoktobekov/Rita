@@ -106,7 +106,7 @@ class _DailyAppState extends State<DailyApp> {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: appearance,
     builder: (context, _) => MaterialApp(
-      title: 'Daily To-Do',
+      title: 'Rita',
       debugShowCheckedModeBanner: false,
       locale: const Locale('ru'),
       supportedLocales: const [Locale('ru')],

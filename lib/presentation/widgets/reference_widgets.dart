@@ -53,7 +53,7 @@ class DesignHeader extends StatelessWidget {
                   eyebrow,
                   style: designText(
                     10,
-                    color: c.muted,
+                    color: c.pickMe ? c.strong : c.muted,
                     weight: 500,
                     spacing: 1.2,
                   ),
@@ -61,7 +61,20 @@ class DesignHeader extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Flexible(child: Text(title, style: c.heading)),
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: c.pickMe && day
+                            ? c.heading.copyWith(
+                                fontStyle: FontStyle.italic,
+                                fontWeight: FontWeight.w600,
+                                fontVariations: const [
+                                  FontVariation('wght', 600),
+                                ],
+                              )
+                            : c.heading,
+                      ),
+                    ),
                     if (mark != null) ...[
                       SizedBox(width: day ? 17 : 14),
                       mark!,
@@ -113,13 +126,15 @@ class DesignButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppPalette.of(context);
     final radius = BorderRadius.circular(
-      primary
+      c.pickMe
+          ? c.radius
+          : primary
           ? 13
           : c.editorial
           ? 5
           : c.radius,
     );
-    final ink = primary ? (c.dark ? c.paper : c.ink) : c.onAction;
+    final ink = primary && !c.pickMe ? (c.dark ? c.paper : c.ink) : c.onAction;
     return Container(
       decoration: BoxDecoration(
         borderRadius: radius,
@@ -265,12 +280,9 @@ class DesignSheet extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: designText(
-                    20,
-                    weight: 550,
-                    spacing: -.5,
-                    color: c.ink,
-                  ),
+                  style: c.pickMe
+                      ? c.heading.copyWith(fontSize: 26)
+                      : designText(20, weight: 550, spacing: -.5, color: c.ink),
                 ),
               ),
               IconButton(
@@ -307,7 +319,11 @@ class SheetAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppPalette.of(context);
-    final ink = danger ? const Color(0xFFB45F4E) : c.ink;
+    final ink = danger
+        ? (c.pickMe
+              ? Theme.of(context).colorScheme.error
+              : const Color(0xFFB45F4E))
+        : c.ink;
     return InkWell(
       onTap: onTap,
       child: Container(

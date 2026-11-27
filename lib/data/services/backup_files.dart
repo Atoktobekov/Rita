@@ -38,7 +38,7 @@ class BackupFiles {
     final bytes = Uint8List.fromList(TaskBackup.encode(tasks, now));
     final path = await FilePicker.platform.saveFile(
       dialogTitle: 'Сохранить копию задач',
-      fileName: 'daily-todo-${now.toIso8601String().replaceAll(':', '-')}.json',
+      fileName: 'Rita-${now.toIso8601String().replaceAll(':', '-')}.json',
       type: FileType.custom,
       allowedExtensions: ['json'],
       bytes: bytes,

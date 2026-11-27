@@ -1,7 +1,7 @@
 ﻿name: daily_todo
 description: Daily planning, one small step at a time.
 publish_to: none
-version: 0.8.0+8
+version: 0.9.0+9
 
 environment:
   sdk: ^3.8.1
@@ -29,6 +29,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/fonts/CormorantGaramond-OFL.txt
     - assets/fonts/GolosText-OFL.txt
     - assets/fonts/Literata-OFL.txt
     - assets/fonts/DMSans-OFL.txt
@@ -42,6 +43,11 @@ flutter:
     - family: Golos Text
       fonts:
         - asset: assets/fonts/GolosText.ttf
+    - family: Cormorant Garamond
+      fonts:
+        - asset: assets/fonts/CormorantGaramond.ttf
+        - asset: assets/fonts/CormorantGaramond-Italic.ttf
+          style: italic
     - family: Literata
       fonts:
         - asset: assets/fonts/Literata.ttf
